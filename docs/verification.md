@@ -63,3 +63,13 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 ## 五語與深色畫面（本次新增）
 
 [英文](verification-assets/locales/english.png)、[日文](verification-assets/locales/japanese.png)、[簡中](verification-assets/locales/simplified-chinese.png)、[韓文](verification-assets/locales/korean.png)、[繁中](verification-assets/locales/traditional-chinese.png)、[深色控制](verification-assets/locales/dark-control.png) 均已目視核對。畫面採測試資料（例如 M1=90cm），不表示原 App 預設值。Gradle 測試清理了私有截圖，因此以保留資料的 instrumentation 重跑 LocaleAppearance 5 案後取回；5 案再次通過。
+
+## CLI（2026-10-20）
+
+- Python 3.14.8、macOS arm64：`python3 -m unittest discover -s tests -v` 及 `.venv/bin/python -m unittest discover -s tests -q`，40 通過、0 失敗、0 跳過。
+- `.venv/bin/python -m pip install -e '.[ble]'` 成功安裝 `cofo-desk-auto 0.1.0`、Bleak 3.0.2 與 PyObjC 12.2.2；`pip check` 沒有相依衝突。
+- 已檢查安裝版 Bleak 的 `write_gatt_char`／`start_notify`／`discover` 簽名與目前呼叫相容。`cofo-desk --version` 輸出 0.1.0、`--help` 列出 8 個子指令。
+- 程序層測試涵蓋模擬狀態跨指令保存、毫米／公分／英吋目標、限時升降／停止、逾時後停止、Ctrl-C 結束碼 130、互斥檔案鎖、無效輸入及損壞狀態拒絕。BLE 入口使用獨立 GATT fixture／mock，不會碰觸實體桌。
+- 真桌掃描、連線、登入、通知 framing、控制／停止及限位保證尚未驗證。此次 CLI 工作沒有變更 Android App。
+
+操作說明與控制限制見 [CLI 文件](cli.md)。

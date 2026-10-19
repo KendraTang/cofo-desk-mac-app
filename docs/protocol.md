@@ -37,3 +37,7 @@ App → 控制 → 裝置與 BLE 診斷 → 掃描。Android 12 以上要求附�
 ## 已實作的純編碼器
 
 Android `core/CofoProtocol` 已編碼靜態可見的 `01` 上升、`02` 下降、`2B` 停止、`0C` 查詢、`07` 限位查詢及 `1B` 毫米目標，含 checksum wrap 測試。這個類別不發出 BLE 寫入；控制頁仍使用模擬桌。
+
+## Python CLI transport
+
+[CLI](cli.md) 已使用 Bleak 實作三組 profile 的能力選擇、訂閱、條件式登入、查詢與序列化寫入。升降與目標指令受時間、通知新鮮度、故障與回報限位約束，取消／逾時時嘗試送 stop。另有經過相同控制流程的虛擬 GATT 裝置。CLI 的 BLE 軟體路徑已完成，真桌仍未驗證；Android 控制頁尚未接入此 transport。

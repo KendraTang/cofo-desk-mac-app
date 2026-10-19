@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cofo-desk-auto"
+version = "0.1.0"
+description = "COFO desk BLE command-line controller and simulator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+ble = ["bleak>=3.0.2,<4"]
+
+[project.scripts]
+cofo-desk = "cofo_desk.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cofo_desk*"]
