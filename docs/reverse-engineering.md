@@ -19,6 +19,8 @@ provider、快取與原始 Evidence 留在本次 `/private/tmp/cofo-rea-*` scrat
 
 [Evidence index](rea-evidence/index.json) 列出實際 Evidence ID。repo 保存的是**選取欄位／方法片段的 projection**，不是可送入 `evidence-import` 的 canonical bundle；每份 projection 保留原 record 的 ID、SHA-256、目標身分、引擎身分與限制。行號是 decompiler 回傳文字的行號，不是原始碼行號。APK 與完整應用反編譯不放進 repo。
 
+2026-10-20 以相同 APK、REA 6.7.0 與 pinned JADX 重跑 index 內的全部方法：既有 projection 的程式碼行都出現在新結果中，本文語意描述逐項相符；Evidence ID 每次執行都會不同，但內容一致。同次另補 `onMonth` 與 `NewMainActivity.<init>` 兩筆 projection（index 中標記 `verification_pass`）。
+
 ## 已回答的問題
 
 ### BLE profile 與連線初始化
@@ -35,7 +37,7 @@ provider、快取與原始 Evidence 留在本次 `/private/tmp/cofo-rea-*` scrat
 
 來源：[profile constants](rea-evidence/gatt-profile-constants.json)，`ev_5988efdf624ea6bd20591142aae057957e249004a1d36527057f33187d8c0ef4`；[discovery](rea-evidence/gatt-discovery.json)，`ev_5fc526bdec83a5470c9777a30a79b9aebf54315fce162268de9ff0864da5bec7`。Android SDK dexdump 的[常數觀察](rea-evidence/uuid-constants.json)亦相符。
 
-連上 GATT 後約 200 ms 呼叫 service discovery；service discovered 後發出 `0C` 查詢三次，排程延遲為 0 / 200 / 400 ms；再發出 `07` 查詢三次，延遲為 800 / 1,000 / 1,200 ms。原 App 未將這些寫入序列化成逐個 callback 確認的 queue。這些時間是 App 排程值，不是硬體需求保證。[通知與初始化片段](rea-evidence/notifications.json)，`ev_02055b56fb65335537ca161201d8b079edd6f6ac3dff550cc41a4b29e8ea0bac`。
+連上 GATT 後約 200 ms 呼叫 service discovery；service discovered 後發出 `0C` 查詢三次，排程延遲為 0 / 200 / 400 ms；再發出 `07` 查詢三次，延遲為 800 / 1,000 / 1,200 ms。原 App 未將這些寫入序列化成逐個 callback 確認的 queue。這些時間是 App 排程值，不是硬體需求保證。登入寫入是在 `setCharacteristicNotification()` 掃描 service 時同步發出，早於上述查詢排程，也不等待寫入 callback；因此原 App 任何控制指令之前都已嘗試過登入。profile 3 的 `fe63` 也會另外啟用 notification。[通知與初始化片段](rea-evidence/notifications.json)，`ev_02055b56fb65335537ca161201d8b079edd6f6ac3dff550cc41a4b29e8ea0bac`。
 
 ### 寫入指令
 
@@ -61,7 +63,7 @@ provider、快取與原始 Evidence 留在本次 `/private/tmp/cofo-rea-*` scrat
 | pattern | 靜態可見語意 |
 | --- | --- |
 | `F2 F2 0E 01 value` | `00` native cm；`01` native inch |
-| `F2 F2 07 length maxHi maxLo minHi minLo` | 兩個 16-bit big-endian max/min 值，length 未驗證 |
+| `F2 F2 07 length maxHi maxLo minHi minLo` | 兩個 16-bit big-endian max/min 值，length 未驗證；依用法推定為 mm（見下文） |
 | `F2 01 length hi lo` | 搜尋此 pattern 後讀兩個 bytes 為 raw height；未要求 length 恰為 2 |
 | `F2 04` | 顯示 `RST`、停提醒、設 error flag |
 | `F2 02 01 code` | 錯誤狀態；停止提醒並設 error flag |
@@ -70,17 +72,21 @@ provider、快取與原始 Evidence 留在本次 `/private/tmp/cofo-rea-*` scrat
 
 高度通知後，原 App 以 `raw >= 550` 推定 cm，否則 inch；以 `raw / 10` 得 native 高度，再依 App display preference 換算。因而通知欄位是十分之一 native cm/in，**不能把每筆通知都當毫米**。`0E` unit 回報也存在，但高度 handler 仍會執行此 heuristic。
 
+上下限沒有單位欄位，但三處用法都把它當 mm：cm-native 時 `maxVul = maxHei`、in-native 時 `maxHei / 2.54`，再與十分之一 native 單位的 raw 高度比較；進度以 `raw*254/100 - minHeightCion` 換算；推薦高度以 `maxHei/10` 當 cm 上限（[height recommendations](rea-evidence/height-recommendations.json)）。這是由用法推得的結論，尚未以真桌封包驗證。
+
+pattern 是對整串 hex 字串做 substring 搜尋，未對齊 byte 邊界；理論上其他封包的資料（例如 `0F 20 1x`）也可能被當成 `F201` 高度通知。
+
 原 receiver 未驗 checksum、trailer、資料長度，也沒有跨 notification 分片重組；write callback 也廣播寫入值。由 outgoing bytes 可推得「command + length + payload modulo 256」規律，但 incoming checksum、header 完整範圍、額外 payload、fragmentation 必須等真桌封包確認。新 codec 的嚴格 bounds/checksum 策略應標成實作假設，不能稱硬體已驗證。
 
 ### 記憶高度與使用者資料
 
 M 開啟坐／站／午睡單選對話框，按確認才呼叫對應 remember 方法；沒有把「長按 shortcut 儲存」當成該段原 App 手勢。[memory dialog](rea-evidence/memory-dialog.json)，`ev_0bb46b137c29d8a72f6c2468469ef8518743c90e8ea8ebeeddca3d8ad4a4c048`。
 
-坐／站儲存需已連線、非錯誤、slider 已放開、高度在範圍；坐高度必須低於已有站高度，站高度必須高於已有坐高度。午睡高度亦檢查連線、錯誤與範圍，但未見相同坐站排序約束。三者存在本機 preference，以 inch 為共同單位。[sit](rea-evidence/remembersit.json)、[stand](rea-evidence/rememberstand.json)、[nap](rea-evidence/remembersleep.json)。
+坐／站儲存需已連線、非錯誤、slider 已放開、高度在範圍，另要求語意未明的 `mBackFlag != 2`（午睡無此條件）；坐高度必須低於已有站高度，站高度必須高於已有坐高度。午睡高度亦檢查連線、錯誤與範圍，但未見相同坐站排序約束。三者存在本機 preference，以 inch 為共同單位。[sit](rea-evidence/remembersit.json)、[stand](rea-evidence/rememberstand.json)、[nap](rea-evidence/remembersleep.json)。
 
 設定頁 `SetDesk1Activity` 有身高、體重與坐／站／午睡高度，可帶入建議高度；返回時保存。若身高單位為 cm，建議坐高是 `int(0.35 * height + 7.62)`（極小身高另有 `0.45 * height` 分支），建議站高在身高至少 127 cm 時為 `int(0.94 * height - 52.07)`，否則為 `int(0.74 * height)`；之後依桌子的上下限限制。午睡建議為建議坐高再加 5 個顯示單位，受上限限制。這些是原 App 公式，並非人體工學建議。[完整公式片段](rea-evidence/height-recommendations.json)，`ev_e27c34ae20653acefb0efcb9e92edd817fb90ba5541700c80424cab9bdd5a57e`。
 
-cm/in 選擇頁直接改 App 顯示 preference，該方法沒有對桌子發出更換硬體單位的指令。[display unit](rea-evidence/display-unit.json)。體重 kg 直接保存輸入字串；lb 乘 `0.453` 保存，但 calorie caller 用 `Integer.parseInt`，存在小數字串不相容的靜態風險，未將此風險當已重現的崩潰。[profile save](rea-evidence/profile-save.json)。
+cm/in 選擇頁直接改 App 顯示 preference，該方法沒有對桌子發出更換硬體單位的指令。[display unit](rea-evidence/display-unit.json)。體重 kg 直接保存輸入字串；lb 乘 `0.453` 保存，但每日統計 `onDay` 用 `Integer.parseInt` 讀體重，存在小數字串不相容的靜態風險，未將此風險當已重現的崩潰；週／月／年統計改用 `Double.valueOf(weight).intValue()`，可處理小數。[profile save](rea-evidence/profile-save.json)。
 
 ### 首次預設值與提醒選擇器
 
@@ -96,7 +102,7 @@ HealthActivity 的三組 hour/minute 控制使用相同邊界：hour down 在 0 
 
 `ThreadTimeAction` 雖另外計算 `standSitDivideHeight`（例如 940），但本次完整 run 方法未讀它來分類，而是使用 `sitStand`；不能單看該欄位當成已生效門檻。thread 每約 5 秒記錄連線且高度大於 0 的經過時間，error flag 會阻擋累計。App onCreate 啟動 thread；本次未藉此證明 Android 長時間背景存活。[activity clock](rea-evidence/activity-clock.json)，`ev_bda79c8a4887f6b308b690cdcfbccdbf3a19e8dc0eb465bc1fb2554cd6c05b7c`。
 
-熱量使用**站立秒數**與整數體重：`long(standingSeconds * (weight * 1.5 + 60) / 3600)`，weight 為 0 則回傳 0。每日為該日公式值；週／月先各日計算並截斷再加總；年以每月總站立秒數各計算並截斷再加總。雞腿顯示值為熱量除 200，格式 1 位小數。這是相容性公式，未驗證生理準確性。[calorie](rea-evidence/calorie.json)，`ev_b2fd26e2f157cb784b008c1126b618acce5136a8f8142a612a4b0795f3924fb3`；[daily](rea-evidence/day-statistics.json)、[weekly](rea-evidence/week-statistics.json)、[yearly](rea-evidence/year-statistics.json)。
+熱量使用**站立秒數**與整數體重：`long(standingSeconds * (weight * 1.5 + 60) / 3600)`，weight 為 0 則回傳 0。每日為該日公式值；週／月先各日計算並截斷再加總；年以每月總站立秒數各計算並截斷再加總。雞腿顯示值為熱量除 200，格式 1 位小數。這是相容性公式，未驗證生理準確性。[calorie](rea-evidence/calorie.json)，`ev_b2fd26e2f157cb784b008c1126b618acce5136a8f8142a612a4b0795f3924fb3`；[daily](rea-evidence/day-statistics.json)、[weekly](rea-evidence/week-statistics.json)、[monthly](rea-evidence/month-statistics.json)、[yearly](rea-evidence/year-statistics.json)。週為週一到下週日（另查本週日但未使用）；月依 `getActualMaximum` 取 28–31 日。體重空白時，日統計直接回 0，週／月／年改用 `defaultWeightValue`，建構子 smali 將其設為 `0`，所以結果仍為 0；本次只確認建構子與上述方法，未搜尋其他寫入點。[default weight](rea-evidence/default-weight.json)。
 
 每日目標百分比先對站立秒數 `/60` 取整，再乘 100 除目標分鐘數取整、最高 100；原 App 零坐零站特別顯示 100。這個零活動行為與合理 UX 的選擇應分別記錄。提醒設定有坐／站啟用、各自鈴聲啟用與鈴聲選取；health 頁預設目標快捷 40 / 60 / 120 / 180 / 240，坐／站快捷 40 / 60 / 120。[health controls](rea-evidence/health-controls.json)。
 
