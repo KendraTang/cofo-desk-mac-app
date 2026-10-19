@@ -1,0 +1,37 @@
+<resources>
+    <item name="connect" type="id" />
+    <item name="height" type="id" />
+    <item name="status" type="id" />
+    <item name="up" type="id" />
+    <item name="down" type="id" />
+    <item name="stop" type="id" />
+    <item name="preset1" type="id" />
+    <item name="preset2" type="id" />
+    <item name="preset3" type="id" />
+    <item name="tab_control" type="id" />
+    <item name="tab_history" type="id" />
+    <item name="tab_reminders" type="id" />
+    <item name="tab_settings" type="id" />
+    <item name="devices" type="id" />
+    <item name="lock" type="id" />
+    <item name="collision" type="id" />
+    <item name="recover" type="id" />
+    <item name="units" type="id" />
+    <item name="save_profile" type="id" />
+    <item name="profile_height" type="id" />
+    <item name="profile_weight" type="id" />
+    <item name="profile_threshold" type="id" />
+    <item name="timer_minutes" type="id" />
+    <item name="start_timer" type="id" />
+    <item name="cancel_timer" type="id" />
+    <item name="timer_status" type="id" />
+    <item name="save_goals" type="id" />
+    <item name="goal" type="id" />
+    <item name="sit_minutes" type="id" />
+    <item name="stand_minutes" type="id" />
+    <item name="scan" type="id" />
+    <item name="language" type="id" />
+    <item name="dark_mode" type="id" />
+    <item name="app_root" type="id" />
+    <item name="history_summary" type="id" />
+</resources>
