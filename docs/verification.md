@@ -71,7 +71,7 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 - 已檢查安裝版 Bleak 的 `write_gatt_char`／`start_notify`／`discover` 簽名與目前呼叫相容。`cofo-desk --version` 輸出 0.1.0、`--help` 列出 8 個子指令。
 - 程序層測試涵蓋模擬狀態跨指令保存、毫米／公分／英吋目標、限時升降／停止、逾時後停止、Ctrl-C 結束碼 130、互斥檔案鎖、無效輸入及損壞狀態拒絕。BLE 入口使用獨立 GATT fixture／mock，不會碰觸實體桌。
 - 停止可靠性更新（2026-10-20）：當時 60 通過（之後輸出重構再加 1 個，現為 61）、0 失敗、0 跳過。新增 SIGTERM／SIGHUP／SIGINT 在移動中送 STOP 並分別以 143／129／130 結束、清理中重複訊號不中斷 STOP、STOP 與斷線同時失敗的回報、獨立 stop 的 STOP→登入→STOP 次序（無登入 service、登入閘門、登入卡住、中途斷線），以及模擬器拒收 checksum／結尾錯誤的目標封包。訊號測試使用 GATT fixture 與模擬裝置，沒有連真桌。
-- 真桌首次連線見下一節；目標高度、STOP 在明顯移動中的效果與限位保證仍未驗證。此次 CLI 工作沒有變更 Android App。
+- 真桌首次連線與移動案例見後面兩節；碰撞與移動中斷線仍未驗證。此次 CLI 工作沒有變更 Android App。
 
 操作說明與控制限制見 [CLI 文件](cli.md)。
 
@@ -90,3 +90,18 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 依這次紀錄，CLI 的通知解析改為驗 checksum 並跨通知重組；把整份紀錄依序重新解析，得到 50 筆高度、13 筆上下限、12 筆單位，沒有任何錯誤或異常事件。
 
 macOS 的藍牙權限屬於啟動終端機的 App；本次在權限生效前就已啟動的 tmux 內被拒絕，改在新開的 Ghostty 分頁執行。
+
+## 真桌移動案例（2026-10-20）
+
+使用者在桌前監看，每個會移動的步驟都先輸入 `y` 同意。腳本是 [motion cases script](hardware-evidence/2026-10-20-motion-cases.sh)，會移動的步驟用 [motion probe](hardware-evidence/2026-10-20-motion-probe.py) 執行 CLI 的 `Desk` 移動程式碼，並在 STOP 後繼續記錄高度。完整紀錄見 [log](hardware-evidence/2026-10-20-motion-cases.log)，解讀見 [REA 調查的移動案例](reverse-engineering.md#移動案例2026-10-20)。
+
+| 步驟 | 結果 |
+| --- | --- |
+| 0. `status` | 631 mm，面板 63 |
+| 1a. 點動上升 1 秒 | STOP 時 646、最後 661，STOP 後 0.63 秒靜止；面板 66 |
+| 1b. CLI `up --seconds 3`，第一個 UP 後 1 秒送 SIGTERM | 結束碼 143，STOP 寫入完成；STOP 時 670、最後 686，只上升 25 mm；面板 69 |
+| 2. `goto` 目前高度 + 5 mm（691），逾時 1 秒 | 686 → 690，進入容差後送 STOP；面板 69；目標單位證實是 mm |
+| 3. 只送一次 UP，不重送、不送 STOP | 690 → 699，寫入後約 1.15 秒自己停下；面板 70 |
+| 4. 點動下降最多 6 秒 | 約 3 秒回到 630，CLI 判定到達限位並送 STOP；面板 63 |
+
+步驟 4 的面板高度，使用者在腳本中誤輸入為 64，事後更正為 63。

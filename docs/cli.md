@@ -53,7 +53,7 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 | `inspect` | 服務、characteristic UUID 與 properties，不需命中已知 profile |
 | `status` | 一次高度、單位、限位、錯誤及樣本時間 |
 | `watch --seconds 10` | 每 0.5 秒顯示狀態，最長 3600 秒 |
-| `up/down --seconds 1` | 每 100 ms 重送方向指令；時間上限 30 秒，結束送 stop |
+| `up/down --seconds 1` | 每 100 ms 重送方向指令（真桌上每次寫入要等約 0.27 秒的回應，實際間隔約 0.27 秒）；時間上限 30 秒，結束送 stop |
 | `goto 105 --unit cm --timeout 20` | 送一次毫米目標，等待通知進入容差後送 stop；逾時上限 120 秒 |
 | `stop` | 連線與 profile 探索後立即送 stop；裝置有登入 service 時再送登入與第二次 stop，不等待通知或初始化查詢 |
 
@@ -83,7 +83,7 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 - `ignored_signals`：清理期間收到、只記錄未處理的訊號。
 - `cleanup_errors`：STOP 或斷線失敗時的補充資訊。
 
-`goto` 接受 cm／in／mm，轉成最接近的整數毫米，並檢查桌子回報的限位。完成表示觀察到高度在目標容差內（cm 通知 1 mm，in 通知 3 mm），不表示取得馬達停止 ACK。`stop_sent` 同樣只表示寫入完成，`physical_stop_confirmed` 為 false。
+`goto` 接受 cm／in／mm，轉成最接近的整數毫米，並檢查桌子回報的限位。完成表示觀察到高度在目標容差內（cm 通知 1 mm，in 通知 3 mm），不表示取得馬達停止 ACK。`stop_sent` 同樣只表示寫入完成，`physical_stop_confirmed` 為 false。2026-10-20 已在一張真桌上證實目標是 mm：桌子自己減速走向目標，停在 690（目標 691），沒有點動 STOP 後那種約 1.5 cm 的滑行。這只是一次 5 mm 的移動；長距離目標是否同樣準確仍未測。
 
 高度優先依 `--native-unit cm/in`，其次使用已回報單位，最後採原 App 的 raw 值門檻推斷（`>=550` 視為 cm）。輸出包含 `unit_source`，需要時明確覆寫。通知的解析規則與假設見下方「通知解析」。錯誤沒有已知的清除封包。錯誤在該連線內保留，重新連線不能據此判定實體故障已排除。
 
@@ -120,7 +120,7 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 
 `--json` 的單次指令輸出一個 JSON object；`watch` 輸出 JSON Lines。執行失敗輸出 `{"error": "..."}`，結束碼 1；參數錯誤為 argparse 訊息、結束碼 2；中斷時 SIGINT 為 130、SIGTERM 為 143、SIGHUP 為 129。狀態中的 `connected` 與 `sample_age_seconds` 是取樣當時的值，單次指令結束會關閉連線。
 
-模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬周邊只接受完整且 checksum、結尾正確的指令封包，送出的通知也和真桌同格式。它收到 UP／DOWN 後會持續移動到 STOP 或限位，沒有模擬硬體漏收重送時的停止時限，因為這個時限尚無證據。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s。
+模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬周邊只接受完整且 checksum、結尾正確的指令封包，送出的通知也和真桌同格式。它收到 UP／DOWN 後會持續移動到 STOP 或限位，也會立即停下。真桌的行為不同：沒有重送時約 1 秒自己停，STOP 後約再走 1.5 cm，速度約 38 mm/s（見 [移動案例](reverse-engineering.md#移動案例2026-10-20)）；模擬器目前沒有模擬這些。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s。
 
 模擬狀態只保存停止位置，不保存或恢復移動指令；與 Android App 資料互相獨立。預設檔案：
 
