@@ -10,6 +10,17 @@ from .protocol import (
     QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, notification_events, target_frame,
 )
 
+# Original app's start-up queries, one slot per init_interval: height at 0/.2/.4 s, limits at .8/1/1.2 s.
+INIT_SCHEDULE = (QUERY_HEIGHT, QUERY_HEIGHT, QUERY_HEIGHT, None, QUERY_LIMITS, QUERY_LIMITS, QUERY_LIMITS)
+RESEND_SECONDS = 0.1            # original app's direction resend interval
+STALE_HEIGHT_SECONDS = 1.5      # stop moving if no newer height arrives
+MOTION_POLL_SECONDS = 0.025
+TELEMETRY_POLL_SECONDS = 0.02
+DISCONNECT_TIMEOUT_SECONDS = 5.0
+LIMIT_SLACK_MM = 3              # reported height may exceed the limits by rounding/sampling
+JOG_LIMIT_MARGIN_MM = 1         # stop jogging this close to a limit
+TARGET_TOLERANCE_MM = {"cm": 1, "in": 3}
+
 
 class DeskError(Exception):
     pass
@@ -58,10 +69,17 @@ def select_profile(services, name="auto", require_notify=True):
     return matches[0]
 
 
+@dataclass(frozen=True)
+class HeightSample:
+    raw: int
+    at: float
+    sequence: int
+
+
 class Desk:
     def __init__(self, client, *, profile="auto", native_unit="auto", simulated=False,
                  connect_timeout=10.0, telemetry_timeout=3.0, init_interval=0.2,
-                 write_timeout=3.0, login_timeout=1.0, stop_record=None):
+                 write_timeout=3.0, login_timeout=1.0, stop_record=None, clock=time.monotonic):
         self.client = client
         self.profile_name = profile
         self.native_unit = native_unit
@@ -73,9 +91,8 @@ class Desk:
         self.login_timeout = login_timeout
         self.stops = stop_record if stop_record is not None else StopRecord()
         self.profile = self.writer = self.reader = None
-        self.raw_height = self.reported_unit = self.limits = self.error = None
-        self.height_at = None
-        self.height_sequence = 0
+        self.clock = clock
+        self.height = self.reported_unit = self.limits = self.error = None
         self._write_lock = asyncio.Lock()
 
     async def __aenter__(self):
@@ -99,7 +116,7 @@ class Desk:
 
     async def _disconnect(self):
         # Cleanup must also run for partial connections and cancelled operations.
-        await asyncio.wait_for(self.client.disconnect(), 5.0)
+        await asyncio.wait_for(self.client.disconnect(), DISCONNECT_TIMEOUT_SECONDS)
 
     def ensure_connected(self):
         if not self.client.is_connected:
@@ -108,9 +125,7 @@ class Desk:
     def _receive(self, sender, data):
         for event in notification_events(bytes(data)):
             if event.kind == "height":
-                self.raw_height = event.value
-                self.height_at = time.monotonic()
-                self.height_sequence += 1
+                self.height = HeightSample(event.value, self.clock(), self._sequence() + 1)
             elif event.kind == "unit":
                 self.reported_unit = event.value
             elif event.kind == "limits":
@@ -130,13 +145,10 @@ class Desk:
             raise DeskError("Timed out subscribing to notifications") from error
         if self._has_login_service():
             await self._write_to(self._login_characteristic(), LOGIN_BYTES)
-        # Original app's 0/.2/.4 s height queries and .8/1/1.2 s limits queries.
-        for index in range(7):
-            if index in (0, 1, 2):
-                await self.write(QUERY_HEIGHT)
-            elif index in (4, 5, 6):
-                await self.write(QUERY_LIMITS)
-            if index < 6:
+        for index, query in enumerate(INIT_SCHEDULE):
+            if query is not None:
+                await self.write(query)
+            if index < len(INIT_SCHEDULE) - 1:
                 await asyncio.sleep(self.init_interval)
         await self.wait_telemetry(require_limits=require_limits)
 
@@ -165,30 +177,33 @@ class Desk:
             raise DeskError("No control characteristic selected")
         await self._write_to(self.writer, data)
 
+    def _sequence(self):
+        return self.height.sequence if self.height else 0
+
     async def wait_telemetry(self, *, require_limits=False, after_sequence=0):
-        deadline = time.monotonic() + self.telemetry_timeout
+        deadline = self.clock() + self.telemetry_timeout
         while True:
             self.ensure_connected()
-            if self.height_sequence > after_sequence and (self.limits is not None or not require_limits):
+            if self._sequence() > after_sequence and (self.limits is not None or not require_limits):
                 return
-            if time.monotonic() >= deadline:
+            if self.clock() >= deadline:
                 raise DeskError("Timed out waiting for height" + (" and travel limits" if require_limits else ""))
-            await asyncio.sleep(0.02)
+            await asyncio.sleep(TELEMETRY_POLL_SECONDS)
 
     def _unit(self):
         if self.native_unit != "auto":
             return self.native_unit, "override"
         if self.reported_unit:
             return self.reported_unit, "notification"
-        if self.raw_height is None:
+        if self.height is None:
             return None, None
-        return ("cm" if self.raw_height >= 550 else "in"), "original-app heuristic"
+        return ("cm" if self.height.raw >= 550 else "in"), "original-app heuristic"
 
     def height_mm(self):
         unit, _ = self._unit()
-        if self.raw_height is None:
+        if self.height is None:
             return None
-        return self.raw_height * (1 if unit == "cm" else 2.54)
+        return self.height.raw * (1 if unit == "cm" else 2.54)
 
     def snapshot(self):
         unit, source = self._unit()
@@ -200,16 +215,16 @@ class Desk:
             "height_mm": round(height, 2) if height is not None else None,
             "height_cm": round(height / 10, 2) if height is not None else None,
             "height_in": round(height / 25.4, 2) if height is not None else None,
-            "raw_height": self.raw_height,
+            "raw_height": self.height.raw if self.height else None,
             "native_unit": unit,
             "unit_source": source,
             "limits_mm": list(self.limits) if self.limits else None,
-            "sample_age_seconds": round(time.monotonic() - self.height_at, 3) if self.height_at else None,
+            "sample_age_seconds": round(self.clock() - self.height.at, 3) if self.height else None,
             "error": self.error,
         }
 
     async def _ready_to_move(self):
-        sequence = self.height_sequence
+        sequence = self._sequence()
         await self.write(QUERY_HEIGHT)
         await self.wait_telemetry(require_limits=True, after_sequence=sequence)
         self._guard()
@@ -218,11 +233,11 @@ class Desk:
         self.ensure_connected()
         if self.error:
             raise DeskError(f"Desk reported {self.error}; movement refused")
-        if self.height_at is None or time.monotonic() - self.height_at > 1.5:
+        if self.height is None or self.clock() - self.height.at > STALE_HEIGHT_SECONDS:
             raise DeskError("Height telemetry is stale; movement stopped")
         if self.limits is None:
             raise DeskError("Travel limits are unknown")
-        if not self.limits[0] - 3 <= self.height_mm() <= self.limits[1] + 3:
+        if not self.limits[0] - LIMIT_SLACK_MM <= self.height_mm() <= self.limits[1] + LIMIT_SLACK_MM:
             raise DeskError("Reported height is outside the travel limits")
 
     async def send_stop(self):
@@ -281,19 +296,19 @@ class Desk:
         await self._ready_to_move()
         reason = "duration"
         async with self._stopping():
-            deadline = time.monotonic() + seconds
+            deadline = self.clock() + seconds
             next_write = 0
-            while time.monotonic() < deadline:
+            while self.clock() < deadline:
                 self._guard()
                 height = self.height_mm()
-                if ((direction == "up" and height >= self.limits[1] - 1) or
-                        (direction == "down" and height <= self.limits[0] + 1)):
+                if ((direction == "up" and height >= self.limits[1] - JOG_LIMIT_MARGIN_MM) or
+                        (direction == "down" and height <= self.limits[0] + JOG_LIMIT_MARGIN_MM)):
                     reason = "limit"
                     break
-                if time.monotonic() >= next_write:
+                if self.clock() >= next_write:
                     await self.write(UP if direction == "up" else DOWN)
-                    next_write = time.monotonic() + 0.1
-                await asyncio.sleep(min(0.025, max(0, deadline - time.monotonic())))
+                    next_write = self.clock() + RESEND_SECONDS
+                await asyncio.sleep(min(MOTION_POLL_SECONDS, max(0, deadline - self.clock())))
         return {"direction": direction, "reason": reason, "stop_sent": True, "status": self.snapshot()}
 
     async def go_to(self, millimetres, timeout):
@@ -304,18 +319,18 @@ class Desk:
         if not self.limits[0] <= millimetres <= self.limits[1]:
             raise DeskError(f"Target is outside discovered limits {self.limits[0]}–{self.limits[1]} mm")
         async with self._stopping():
-            tolerance = 3 if self._unit()[0] == "in" else 1
+            tolerance = TARGET_TOLERANCE_MM[self._unit()[0]]
             if abs(self.height_mm() - millimetres) > tolerance:
-                sequence = self.height_sequence
+                sequence = self._sequence()
                 await self.write(packet)
-                deadline = time.monotonic() + timeout
+                deadline = self.clock() + timeout
                 while True:
                     self._guard()
-                    if self.height_sequence > sequence and abs(self.height_mm() - millimetres) <= tolerance:
+                    if self._sequence() > sequence and abs(self.height_mm() - millimetres) <= tolerance:
                         break
-                    if time.monotonic() >= deadline:
+                    if self.clock() >= deadline:
                         raise DeskError("Target was not reached before timeout; stop attempted")
-                    await asyncio.sleep(0.025)
+                    await asyncio.sleep(MOTION_POLL_SECONDS)
         return {"target_mm": millimetres, "target_reached": True, "stop_sent": True, "status": self.snapshot()}
 
     def inspect(self):

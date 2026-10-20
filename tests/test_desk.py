@@ -183,14 +183,14 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_stale_height_during_jog_stops(self):
         peripheral = Peripheral()
-        async with self.desk(peripheral) as desk:
+        skew = [0.0]
+        # Time moves on without new height samples once UP is written.
+        clock = lambda: time.monotonic() + skew[0]
+        async with self.desk(peripheral, clock=clock) as desk:
             await desk.prepare(require_limits=True)
-            def stale(data):
-                if data == UP:
-                    desk.height_at = time.monotonic() - 2
-            peripheral.on_command = stale
+            peripheral.on_command = lambda data: skew.__setitem__(0, 2.0) if data == UP else None
             with self.assertRaisesRegex(DeskError, "stale"):
-                await desk.jog("up", 0.2)
+                await desk.jog("up", 20)
         self.assertEqual(peripheral.sent[-1][1], STOP)
 
     async def test_target_is_one_shot_and_waits_for_observed_height(self):

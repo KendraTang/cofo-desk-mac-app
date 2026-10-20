@@ -21,7 +21,7 @@ class BleEntryTest(unittest.IsolatedAsyncioTestCase):
             return peripheral
         args = parser().parse_args(["--device", "peripheral-uuid", "stop"])
         with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakClient=factory)):
-            result = await run(args)
+            result = (await run(args)).value
         self.assertEqual(constructions, [("peripheral-uuid", {"timeout": 10.0})])
         self.assertFalse(result["simulated"])
         self.assertFalse(result["physical_stop_confirmed"])
@@ -32,7 +32,7 @@ class BleEntryTest(unittest.IsolatedAsyncioTestCase):
         peripheral = Peripheral()
         args = parser().parse_args(["--device", "peripheral-uuid", "inspect"])
         with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakClient=lambda *a, **k: peripheral)):
-            result = await run(args)
+            result = (await run(args)).value
         self.assertEqual(len(result["services"]), 1)
         self.assertEqual(peripheral.sent, [])
         self.assertEqual(peripheral.subscribe_count, 0)
@@ -45,7 +45,7 @@ class BleEntryTest(unittest.IsolatedAsyncioTestCase):
         }))
         args = parser().parse_args(["scan", "--seconds", "2"])
         with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakScanner=scanner)):
-            result = await run(args)
+            result = (await run(args)).value
         scanner.discover.assert_awaited_once_with(timeout=2, return_adv=True)
         self.assertEqual([d["address"] for d in result["devices"]], ["uuid-two", "uuid-one"])
         self.assertFalse(result["devices"][0]["supported_service_advertised"])

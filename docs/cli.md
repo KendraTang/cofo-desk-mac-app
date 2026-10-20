@@ -110,4 +110,4 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 python3 -m unittest discover -s tests -v
 ```
 
-60 個測試涵蓋協定固定向量、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。
+61 個測試涵蓋協定固定向量、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。

@@ -1,6 +1,7 @@
 """The cofo-desk console entry point."""
 import argparse
 import asyncio
+from dataclasses import dataclass
 import json
 import math
 from pathlib import Path
@@ -69,36 +70,63 @@ def parser():
     return result
 
 
-def emit(value, as_json):
+def status_lines(value):
+    label = "SIMULATED" if value["simulated"] else "BLE"
+    return [f"{label}  {value['height_cm']} cm / {value['height_in']} in  "
+            f"limits {value['limits_mm']} mm  error {value['error'] or 'none'}  "
+            f"unit {value['native_unit']} ({value['unit_source']})"]
+
+
+def scan_lines(value):
+    lines = [f"{d['address']}  {d['name'] or '(unnamed)'}  RSSI {d['rssi']}" for d in value["devices"]]
+    return lines or ["No peripherals found."]
+
+
+def inspect_lines(value):
+    lines = []
+    for service in value["services"]:
+        lines.append(service["uuid"])
+        lines += [f"  {c['uuid']}  {', '.join(c['properties'])}" for c in service["characteristics"]]
+    return lines
+
+
+def jog_lines(value):
+    return [f"{value['direction']} finished ({value['reason']}); stop sent."] + status_lines(value["status"])
+
+
+def target_lines(value):
+    return [f"Target {value['target_mm']} mm observed; stop sent."] + status_lines(value["status"])
+
+
+def stop_lines(value):
+    return [f"{step['step']}: {'written' if step['completed'] else step['error']}" for step in value["steps"]] + [
+        "Stop sent. Physical stop is not confirmed by the protocol."]
+
+
+@dataclass(frozen=True)
+class Result:
+    """A command's JSON value with the text rendering that belongs to it."""
+    value: dict
+    lines: object
+
+
+def emit(result, as_json):
+    if as_json:
+        print(json.dumps(result.value, ensure_ascii=False, allow_nan=False), flush=True)
+    else:
+        for line in result.lines(result.value):
+            print(line, flush=True)
+
+
+def emit_error(value, as_json):
     if as_json:
         print(json.dumps(value, ensure_ascii=False, allow_nan=False), flush=True)
-    elif "error" in value and "height_mm" not in value:
-        print(f"Error: {value['error']}", file=sys.stderr, flush=True)
-    elif "devices" in value:
-        for device in value["devices"]:
-            print(f"{device['address']}  {device['name'] or '(unnamed)'}  RSSI {device['rssi']}", flush=True)
-        if not value["devices"]:
-            print("No peripherals found.", flush=True)
-    elif "services" in value:
-        for service in value["services"]:
-            print(service["uuid"])
-            for characteristic in service["characteristics"]:
-                print(f"  {characteristic['uuid']}  {', '.join(characteristic['properties'])}")
-    elif "height_mm" in value:
-        label = "SIMULATED" if value["simulated"] else "BLE"
-        print(f"{label}  {value['height_cm']} cm / {value['height_in']} in  "
-              f"limits {value['limits_mm']} mm  error {value['error'] or 'none'}  "
-              f"unit {value['native_unit']} ({value['unit_source']})", flush=True)
-    elif "status" in value:
-        if value.get("target_reached"):
-            print(f"Target {value['target_mm']} mm observed; stop sent.", flush=True)
-        else:
-            print(f"{value['direction']} finished ({value['reason']}); stop sent.", flush=True)
-        emit(value["status"], False)
     else:
-        for step in value["steps"]:
-            print(f"{step['step']}: {'written' if step['completed'] else step['error']}", flush=True)
-        print("Stop sent. Physical stop is not confirmed by the protocol.", flush=True)
+        print(f"Error: {value['error']}", file=sys.stderr, flush=True)
+
+
+def simulated_profile(args):
+    return "ff12" if args.profile == "auto" else args.profile
 
 
 def bleak_module():
@@ -112,7 +140,7 @@ def bleak_module():
 async def run(args, stops=None):
     if args.command == "scan":
         if args.simulate:
-            advertised = next(p for p in PROFILES if p.name == ("ff12" if args.profile == "auto" else args.profile))
+            advertised = next(p for p in PROFILES if p.name == simulated_profile(args))
             devices = [{"name": "Virtual COFO", "address": "simulated", "rssi": 0,
                         "service_uuids": [advertised.service], "supported_service_advertised": True}]
         else:
@@ -123,11 +151,11 @@ async def run(args, stops=None):
                         "supported_service_advertised": bool(known & {u.lower() for u in adv.service_uuids})}
                        for device, adv in found.values()]
             devices.sort(key=lambda device: device["rssi"], reverse=True)
-        return {"simulated": args.simulate, "devices": devices}
+        return Result({"simulated": args.simulate, "devices": devices}, scan_lines)
     if args.simulate:
         from .simulator import SimulatedClient, default_state_file
         client = SimulatedClient(args.state_file or default_state_file(),
-                                 profile="ff12" if args.profile == "auto" else args.profile)
+                                 profile=simulated_profile(args))
     else:
         client = bleak_module().BleakClient(args.device, timeout=args.connect_timeout)
     async with Desk(client, profile=args.profile, native_unit=args.native_unit, simulated=args.simulate,
@@ -135,29 +163,30 @@ async def run(args, stops=None):
                     init_interval=0 if args.simulate else 0.2, login_timeout=args.login_timeout,
                     stop_record=stops) as desk:
         if args.command == "inspect":
-            return desk.inspect()
+            return Result(desk.inspect(), inspect_lines)
         if args.command == "stop":
             steps = await desk.stop_now()
             if not desk.stops.completed:
                 raise DeskError("No STOP write completed: " + "; ".join(
                     f"{step['step']}: {step['error']}" for step in steps))
-            return {"simulated": args.simulate, "stop_sent": True, "steps": steps, "physical_stop_confirmed": False}
+            return Result({"simulated": args.simulate, "stop_sent": True, "steps": steps,
+                           "physical_stop_confirmed": False}, stop_lines)
         await desk.prepare(require_limits=args.command in ("goto", "up", "down"))
         if args.command == "status":
-            return desk.snapshot()
+            return Result(desk.snapshot(), status_lines)
         elif args.command == "watch":
             deadline = time.monotonic() + args.seconds
             while True:
                 desk.ensure_connected()
-                emit(desk.snapshot(), args.json)
+                emit(Result(desk.snapshot(), status_lines), args.json)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break
                 await asyncio.sleep(min(0.5, remaining))
         elif args.command in ("up", "down"):
-            return await desk.jog(args.command, args.seconds)
+            return Result(await desk.jog(args.command, args.seconds), jog_lines)
         elif args.command == "goto":
-            return await desk.go_to(args.target_mm, args.timeout)
+            return Result(await desk.go_to(args.target_mm, args.timeout), target_lines)
 
 
 class Interrupted(Exception):
@@ -216,22 +245,22 @@ def main(argv=None):
         args.target_mm = round(millimetres)
     stops = StopRecord()
     try:
-        value = asyncio.run(supervised(args, stops))
-        if value is not None:
-            emit(value, args.json)
+        result = asyncio.run(supervised(args, stops))
+        if result is not None:
+            emit(result, args.json)
     except Interrupted as interrupted:
-        emit(interrupted.report(), args.json)
+        emit_error(interrupted.report(), args.json)
         return INTERRUPT_CODES[interrupted.received[0]]
     except KeyboardInterrupt:
         # Only reachable outside the supervised window, where no desk session is active.
-        emit({"error": "Interrupted outside the desk session; physical desk state is unknown",
-              "signal": "SIGINT", **stops.report()}, args.json)
+        emit_error({"error": "Interrupted outside the desk session; physical desk state is unknown",
+                    "signal": "SIGINT", **stops.report()}, args.json)
         return 130
     except Exception as error:
         message = str(error) or type(error).__name__
         notes = getattr(error, "__notes__", [])
         if notes:
             message += "; " + "; ".join(notes)
-        emit({"error": message}, args.json)
+        emit_error({"error": message}, args.json)
         return 1
     return 0
