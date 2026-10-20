@@ -15,7 +15,7 @@
 
 環境：macOS arm64、OpenJDK 21.0.10、Android SDK 36、AVD `Medium_Phone_API_36.1`／`emulator-5554`。裝置回報 API 36；AVD 名稱不是額外 API 相容性證明。
 
-最新通過（2026-10-20 review 修正後）：51 個 JVM 測試（含 DeskPort 契約）、12 個 AppFlow + 6 個 LocaleAppearance = 18 個 Android 測試，加上 61 個 Python CLI 測試，共 130 個自動測試。MainActivity 拆成各分頁類別後重跑全部 Android 測試與權限矩陣，並以模擬器截圖比對控制頁版面。AppFlow 改用所選語言的 resource 比對文字，另以一個測試明確斷言預設語言為繁中；通知加入有界等待，驗證真正送達，未降低斷言。權限矩陣腳本會先確認 App 介面是繁中，否則立即中止並說明原因；已實測英文介面時以結束碼 1 中止。
+最新通過（2026-10-20 review 修正後）：51 個 JVM 測試（含 DeskPort 契約）、12 個 AppFlow + 6 個 LocaleAppearance = 18 個 Android 測試，加上 66 個 Python CLI 測試，共 135 個自動測試。MainActivity 拆成各分頁類別後重跑全部 Android 測試與權限矩陣，並以模擬器截圖比對控制頁版面。AppFlow 改用所選語言的 resource 比對文字，另以一個測試明確斷言預設語言為繁中；通知加入有界等待，驗證真正送達，未降低斷言。權限矩陣腳本會先確認 App 介面是繁中，否則立即中止並說明原因；已實測英文介面時以結束碼 1 中止。
 
 最後完整測試指令：
 
@@ -46,7 +46,7 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 | README 原始 TODO | 目前證據 | 判定 |
 | --- | --- | --- |
 | List all functions | 25 個有來源 ID、官方截圖／手冊、原 App 主要畫面與 REA；連線後流程尚缺 | 公開資料盤點完成；「所有功能」尚未證明 |
-| Design checklist and test cases | `test-plan.md` 包含前置、操作、預期與功能對照，以及原 App／實機矩陣；130 個自動測試通過（JVM 51、Android 18、Python 61） | 已完成測試設計與目前軟體驗證；人工／實機案例另行追蹤 |
+| Design checklist and test cases | `test-plan.md` 包含前置、操作、預期與功能對照，以及原 App／實機矩陣；135 個自動測試通過（JVM 51、Android 18、Python 66） | 已完成測試設計與目前軟體驗證；人工／實機案例另行追蹤 |
 | Clone app | 可安裝的原生 App、模擬控制、統計、提醒、保存、BLE 診斷與測試 | 模擬版本已完成；完整 BLE／原 App 相容尚未完成 |
 | Plan further auto features | `automation.md` 含 A1–A6 的順序、條件、取消、優先權與驗收 | 規劃完成，未聲稱自動移動已實作 |
 
@@ -86,5 +86,7 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 | `stop` | 只送一次 STOP（沒有登入 service），寫入成功；桌子原本就靜止，無法觀察效果 |
 | `up --seconds 0.1` | 寫入一次 UP、160 ms 後 STOP；高度 630 → 631 mm，面板仍為 63 |
 | `down --seconds 0.1` | 高度 631 已在下限 630 的 1 mm 安全距離內，CLI 判定到達限位，只送 STOP，未送 DOWN |
+
+依這次紀錄，CLI 的通知解析改為驗 checksum 並跨通知重組；把整份紀錄依序重新解析，得到 50 筆高度、13 筆上下限、12 筆單位，沒有任何錯誤或異常事件。
 
 macOS 的藍牙權限屬於啟動終端機的 App；本次在權限生效前就已啟動的 tmux 內被拒絕，改在新開的 Ghostty 分頁執行。

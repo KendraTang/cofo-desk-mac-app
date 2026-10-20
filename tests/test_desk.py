@@ -5,7 +5,7 @@ import unittest
 
 from cofo_desk.desk import Desk, DeskError, select_profile
 from cofo_desk.protocol import LOGIN_BYTES, LOGIN_CHARACTERISTIC, LOGIN_SERVICE, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP
-from support import Peripheral
+from support import Peripheral, error, height, unit
 
 
 class DeskTest(unittest.IsolatedAsyncioTestCase):
@@ -104,7 +104,7 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
         async with self.desk(peripheral, trace=lambda *event: seen.append(event)) as desk:
             await desk.prepare()
         self.assertEqual(seen[0], ("write", peripheral.writer.uuid, QUERY_HEIGHT))
-        self.assertEqual(seen[1], ("notify", peripheral.reader.uuid, bytes.fromhex("F2F2010202D0")))
+        self.assertEqual(seen[1], ("notify", peripheral.reader.uuid, bytes.fromhex(height(720))))
         self.assertEqual(sum(1 for event in seen if event[0] == "write"), 6)
 
     async def test_write_without_response_and_conditional_login(self):
@@ -146,14 +146,14 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
         peripheral = Peripheral()
         async with self.desk(peripheral) as desk:
             await desk.prepare()
-            peripheral.notify("F2F20E0101 F2F20102011B")  # 28.3 in
+            peripheral.notify(unit(True) + height(283))  # 28.3 in
             self.assertAlmostEqual(desk.height_mm(), 718.82)
             self.assertEqual(desk.snapshot()["unit_source"], "notification")
             desk.native_unit = "cm"
             self.assertEqual(desk.height_mm(), 283)
             self.assertEqual(desk.snapshot()["unit_source"], "override")
-            peripheral.notify("F2020110")
-            peripheral.notify("F2F2010202D0")
+            peripheral.notify(error(0x10))
+            peripheral.notify(height(720))
             with self.assertRaisesRegex(DeskError, "LOCK"):
                 await desk.jog("up", 0.1)
         self.assertNotIn(UP, [packet for _, packet, _ in peripheral.sent])
@@ -172,7 +172,7 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
         peripheral = Peripheral()
         def upper_limit(data):
             if data == QUERY_HEIGHT:
-                peripheral.notify("F2F201020500")
+                peripheral.notify(height(1280))
         peripheral.on_command = upper_limit
         async with self.desk(peripheral) as desk:
             await desk.prepare(require_limits=True)
@@ -183,7 +183,7 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_fault_during_jog_stops_and_reports_failure(self):
         peripheral = Peripheral()
-        peripheral.on_command = lambda data: peripheral.notify("F2020101") if data == UP else None
+        peripheral.on_command = lambda data: peripheral.notify(error(1)) if data == UP else None
         async with self.desk(peripheral) as desk:
             await desk.prepare(require_limits=True)
             with self.assertRaisesRegex(DeskError, "E01"):
@@ -205,7 +205,7 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
     async def test_target_is_one_shot_and_waits_for_observed_height(self):
         peripheral = Peripheral()
         packet = bytes.fromhex("F1F11B0202DAF97E")  # 730 mm; independent static vector
-        peripheral.on_command = lambda data: peripheral.notify("F2F2010202DA") if data[2] == 0x1B else None
+        peripheral.on_command = lambda data: peripheral.notify(height(730)) if data[2] == 0x1B else None
         async with self.desk(peripheral) as desk:
             await desk.prepare(require_limits=True)
             result = await desk.go_to(730, 0.1)

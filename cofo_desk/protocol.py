@@ -1,18 +1,30 @@
-"""Static 1.0.10 protocol observations; see docs/reverse-engineering.md.
+"""COFO frames from the original 1.0.10 app, checked against one real desk; see docs/reverse-engineering.md.
 
-Incoming parsing is limited to fields actually consumed by the original app.
-It validates bounds, but does not invent an incoming checksum or ACK contract.
-Each notification must contain complete fields, as with the original receiver.
+Outgoing and incoming frames share one layout: prefix, opcode, length, payload, checksum, 7E.
+The checksum is (opcode + length + sum(payload)) & 0xFF. Only fields the original app consumes
+are decoded; frames with other opcodes are valid but ignored.
 """
 from dataclasses import dataclass
 
 
-def frame(opcode: int, payload: bytes = b"") -> bytes:
+COMMAND_PREFIX = b"\xf1\xf1"
+NOTIFY_PREFIX = b"\xf2\xf2"
+TRAILER = 0x7E
+
+
+def checksum(opcode: int, payload: bytes) -> int:
+    return (opcode + len(payload) + sum(payload)) & 255
+
+
+def frame(opcode: int, payload: bytes = b"", prefix: bytes = COMMAND_PREFIX) -> bytes:
     if not 0 <= opcode <= 255 or len(payload) > 255:
         raise ValueError("Invalid opcode or payload length")
-    return bytes((0xF1, 0xF1, opcode, len(payload))) + payload + bytes(
-        ((opcode + len(payload) + sum(payload)) & 255, 0x7E)
-    )
+    return prefix + bytes((opcode, len(payload))) + payload + bytes((checksum(opcode, payload), TRAILER))
+
+
+def notification_frame(opcode: int, payload: bytes = b"") -> bytes:
+    """A desk-to-app frame, as the real desk sends it (used by the simulator and tests)."""
+    return frame(opcode, payload, NOTIFY_PREFIX)
 
 
 UP = frame(0x01)
@@ -56,57 +68,70 @@ class Event:
     value: object
 
 
-def notification_events(data: bytes) -> list[Event]:
-    """Parse complete known fields, retaining unknown/truncated packets as no events.
+# Assumption: no valid incoming frame is longer than this. The longest observed is 10 bytes
+# (limits); a claimed length beyond it is treated as a false start, not awaited.
+MAX_FRAME_BYTES = 32
 
-    A leading F2 is optional for the height/error patterns because the original
-    searches F201/F20201. Unit and limits require their observed doubled prefix.
-    Extra payload is retained as uninterpreted bytes rather than motor flags.
+
+def _decode(opcode: int, payload: bytes):
+    if opcode == 0x0E and len(payload) == 1 and payload[0] in (0, 1):
+        return Event("unit", "cm" if payload[0] == 0 else "in")
+    if opcode == 0x07 and len(payload) >= 4:
+        maximum, minimum = int.from_bytes(payload[:2], "big"), int.from_bytes(payload[2:4], "big")
+        return Event("limits", (minimum, maximum)) if 0 < minimum < maximum else None
+    if opcode == 0x01 and len(payload) >= 2:
+        # The real desk sends 3 bytes; the third (always 07 so far) is not interpreted.
+        return Event("height", int.from_bytes(payload[:2], "big"))
+    if opcode == 0x02 and len(payload) == 1:
+        code = payload[0]
+        if 1 <= code <= 13:
+            return Event("error", f"E0{code}")  # 10-13 read E010-E013, as in the original app
+        return Event("error", {14: "H01", 15: "H02", 16: "LOCK"}.get(code, f"UNKNOWN_0x{code:02X}"))
+    if opcode == 0x04:
+        # Assumption: RST uses the common frame layout; not yet seen on the real desk.
+        return Event("error", "RST")
+    return None
+
+
+class NotificationReader:
+    """Joins notifications into one byte stream, so a frame split across BLE notifications still parses.
+
+    A frame is used only if its checksum and trailer are right and its opcode and length are known.
+    Anything else is skipped one byte at a time until the next F2 F2. An incomplete tail is kept for the
+    next notification; it is always shorter than MAX_FRAME_BYTES.
     """
-    events = []
-    index = 0
-    while index < len(data):
-        if data[index] != 0xF2:
-            index += 1
-            continue
-        opcode_at = index + 1
-        doubled = opcode_at < len(data) and data[opcode_at] == 0xF2
-        if doubled:
-            opcode_at += 1
-        if opcode_at >= len(data):
-            break
-        opcode = data[opcode_at]
-        if opcode == 0x04:
-            events.append(Event("error", "RST"))
-            index = opcode_at + 1
-            continue
-        if opcode_at + 1 >= len(data):
-            break
-        length = data[opcode_at + 1]
-        end = opcode_at + 2 + length
-        if end > len(data):
-            index += 1
-            continue
-        payload = data[opcode_at + 2:end]
-        event = None
-        if doubled and opcode == 0x0E and length == 1 and payload[0] in (0, 1):
-            event = Event("unit", "cm" if payload[0] == 0 else "in")
-        elif doubled and opcode == 0x07 and length >= 4:
-            maximum, minimum = int.from_bytes(payload[:2], "big"), int.from_bytes(payload[2:4], "big")
-            if 0 < minimum < maximum:
-                event = Event("limits", (minimum, maximum))
-        elif opcode == 0x01 and length >= 2:
-            event = Event("height", int.from_bytes(payload[:2], "big"))
-        elif opcode == 0x02 and length == 1:
-            code = payload[0]
-            if 1 <= code <= 13:
-                error = f"E0{code}"
-            else:
-                error = {14: "H01", 15: "H02", 16: "LOCK"}.get(code, f"UNKNOWN_0x{code:02X}")
-            event = Event("error", error)
-        if event is not None:
-            events.append(event)
+    def __init__(self):
+        self.pending = b""
+
+    def feed(self, data: bytes) -> list[Event]:
+        data = self.pending + bytes(data)
+        events = []
+        index = 0
+        while index < len(data):
+            if data[index:index + 2] != NOTIFY_PREFIX[:len(data) - index]:
+                index += 1
+                continue
+            if index + 4 > len(data):
+                break  # prefix, or prefix + opcode, at the very end: wait for more
+            opcode, length = data[index + 2], data[index + 3]
+            end = index + 4 + length + 2
+            if end > index + MAX_FRAME_BYTES:
+                index += 1
+                continue
+            if end > len(data):
+                break
+            payload = data[index + 4:end - 2]
+            if data[end - 2] != checksum(opcode, payload) or data[end - 1] != TRAILER:
+                index += 1
+                continue
+            event = _decode(opcode, payload)
+            if event is not None:
+                events.append(event)
             index = end
-        else:
-            index += 1
-    return events
+        self.pending = data[index:]
+        return events
+
+
+def notification_events(data: bytes) -> list[Event]:
+    """Events in one self-contained buffer; incomplete trailing bytes are discarded."""
+    return NotificationReader().feed(data)

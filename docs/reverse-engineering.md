@@ -76,7 +76,7 @@ provider、快取與原始 Evidence 留在本次 `/private/tmp/cofo-rea-*` scrat
 
 pattern 是對整串 hex 字串做 substring 搜尋，未對齊 byte 邊界；理論上其他封包的資料（例如 `0F 20 1x`）也可能被當成 `F201` 高度通知。
 
-原 receiver 未驗 checksum、trailer、資料長度，也沒有跨 notification 分片重組；write callback 也廣播寫入值。由 outgoing bytes 可推得「command + length + payload modulo 256」規律，但 incoming checksum、header 完整範圍、額外 payload、fragmentation 必須等真桌封包確認。新 codec 的嚴格 bounds/checksum 策略應標成實作假設，不能稱硬體已驗證。
+原 receiver 未驗 checksum、trailer、資料長度，也沒有跨 notification 分片重組；write callback 也廣播寫入值。由 outgoing bytes 可推得「command + length + payload modulo 256」規律；2026-10-20 的真桌紀錄顯示 incoming 也使用同樣的格式與 checksum，並會分片（見下節）。CLI 依此驗 checksum 並跨通知重組，相關實作假設列在 [CLI 文件](cli.md#通知解析)。
 
 ### 記憶高度與使用者資料
 

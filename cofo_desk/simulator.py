@@ -10,7 +10,7 @@ import time
 from types import SimpleNamespace
 
 from .desk import DeskError
-from .protocol import DOWN, PROFILES, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, target_frame
+from .protocol import DOWN, PROFILES, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, notification_frame, target_frame
 
 
 def default_state_file():
@@ -94,7 +94,8 @@ class SimulatedClient:
             self.callback(self.reader, bytearray(packet))
 
     def _height(self):
-        self._emit(b"\xf2\xf2\x01\x02" + round(self.height).to_bytes(2, "big"))
+        # Same layout as the real desk, including the uninterpreted third byte.
+        self._emit(notification_frame(0x01, round(self.height).to_bytes(2, "big") + b"\x07"))
 
     async def _tick(self):
         while True:
@@ -104,7 +105,7 @@ class SimulatedClient:
 
     async def start_notify(self, characteristic, callback):
         self.callback = callback
-        self._emit(bytes.fromhex("F2F20E0100"))
+        self._emit(notification_frame(0x0E, b"\x00"))
 
     async def write_gatt_char(self, characteristic, data, *, response):
         if not self.is_connected:
@@ -115,7 +116,7 @@ class SimulatedClient:
         if data == QUERY_HEIGHT:
             self._height()
         elif data == QUERY_LIMITS:
-            self._emit(b"\xf2\xf2\x07\x04" + self.maximum.to_bytes(2, "big") + self.minimum.to_bytes(2, "big"))
+            self._emit(notification_frame(0x07, self.maximum.to_bytes(2, "big") + self.minimum.to_bytes(2, "big")))
         elif data == STOP:
             self.direction, self.target = 0, None
             self._height()

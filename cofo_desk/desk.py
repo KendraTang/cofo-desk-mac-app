@@ -7,7 +7,7 @@ import time
 
 from .protocol import (
     DOWN, LOGIN_BYTES, LOGIN_CHARACTERISTIC, LOGIN_SERVICE, PROFILES,
-    QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, notification_events, target_frame,
+    NotificationReader, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, target_frame,
 )
 
 # Original app's start-up queries, one slot per init_interval: height at 0/.2/.4 s, limits at .8/1/1.2 s.
@@ -95,6 +95,7 @@ class Desk:
         # Optional raw-traffic observer, called as trace(direction, uuid, data).
         self.trace = trace
         self.height = self.reported_unit = self.limits = self.error = None
+        self.reader_stream = NotificationReader()
         self._write_lock = asyncio.Lock()
 
     async def __aenter__(self):
@@ -127,7 +128,7 @@ class Desk:
     def _receive(self, sender, data):
         if self.trace:
             self.trace("notify", getattr(sender, "uuid", str(sender)), bytes(data))
-        for event in notification_events(bytes(data)):
+        for event in self.reader_stream.feed(bytes(data)):
             if event.kind == "height":
                 self.height = HeightSample(event.value, self.clock(), self._sequence() + 1)
             elif event.kind == "unit":

@@ -2,7 +2,24 @@
 import asyncio
 from types import SimpleNamespace
 
-from cofo_desk.protocol import UP
+from cofo_desk.protocol import UP, notification_frame
+
+
+def height(raw):
+    """Height frame as the real desk sends it: 2 height bytes plus an uninterpreted 07."""
+    return notification_frame(0x01, raw.to_bytes(2, "big") + b"\x07").hex()
+
+
+def limits(minimum, maximum):
+    return notification_frame(0x07, maximum.to_bytes(2, "big") + minimum.to_bytes(2, "big")).hex()
+
+
+def unit(inches):
+    return notification_frame(0x0E, bytes((1 if inches else 0,))).hex()
+
+
+def error(code):
+    return notification_frame(0x02, bytes((code,))).hex()
 
 
 class Peripheral:
@@ -46,9 +63,9 @@ class Peripheral:
             await asyncio.sleep(0)
             self.sent.append((characteristic, bytes(data), response))
             if data == bytes.fromhex("F1F10C000C7E") and self.height_enabled:
-                self.notify("F2F2010202D0")
+                self.notify(height(720))
             if data == bytes.fromhex("F1F10700077E") and self.limits_enabled:
-                self.notify("F2F2070405000276")
+                self.notify(limits(630, 1280))
             if self.on_command:
                 self.on_command(bytes(data))
             if data == UP:
