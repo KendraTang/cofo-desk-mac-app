@@ -59,7 +59,7 @@ public class LocaleAppearanceTest {
         onView(withText("深色")).perform(click());
         scenario.recreate();
         scenario.onActivity(activity -> {
-            assertEquals("dark", UiPreferences.theme(activity));
+            assertEquals(UiPreferences.Theme.DARK, UiPreferences.theme(activity));
             assertEquals(0xff101827, ((ColorDrawable) activity.findViewById(R.id.app_root).getBackground()).getColor());
             int text = ((EditText) activity.findViewById(R.id.profile_weight)).getCurrentTextColor();
             assertTrue(Color.red(text) > 150 && Color.green(text) > 150 && Color.blue(text) > 150);
@@ -81,12 +81,12 @@ public class LocaleAppearanceTest {
         android.content.res.Configuration day = new android.content.res.Configuration(night);
         day.uiMode = (day.uiMode & ~android.content.res.Configuration.UI_MODE_NIGHT_MASK) | android.content.res.Configuration.UI_MODE_NIGHT_NO;
         Context light = context.createConfigurationContext(day);
-        UiPreferences.theme(context, "system"); assertTrue(UiPreferences.dark(dark)); assertFalse(UiPreferences.dark(light));
-        UiPreferences.theme(context, "light"); assertFalse(UiPreferences.dark(dark));
-        UiPreferences.theme(context, "dark"); assertTrue(UiPreferences.dark(light));
+        UiPreferences.theme(context, UiPreferences.Theme.SYSTEM); assertTrue(UiPreferences.dark(dark)); assertFalse(UiPreferences.dark(light));
+        UiPreferences.theme(context, UiPreferences.Theme.LIGHT); assertFalse(UiPreferences.dark(dark));
+        UiPreferences.theme(context, UiPreferences.Theme.DARK); assertTrue(UiPreferences.dark(light));
     }
     @Test public void receiverAndBleDiagnosticsUseSelectedLanguage() {
-        UiPreferences.language(context, "en");
+        UiPreferences.language(context, UiPreferences.Language.EN);
         new ReminderReceiver().onReceive(context, new android.content.Intent());
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         android.service.notification.StatusBarNotification posted = NotificationAssertions.awaitPosted(manager);
@@ -100,7 +100,7 @@ public class LocaleAppearanceTest {
         assertEquals("Desk reported an unknown error (0x11)", UiText.fault(UiPreferences.localized(context), dev.cofodesk.auto.core.Fault.unknown("0x11")));
     }
     @Test public void everyCoreCodeHasTextInEveryLanguage() {
-        for (String language : UiPreferences.LANGUAGES) {
+        for (UiPreferences.Language language : UiPreferences.Language.values()) {
             UiPreferences.language(context, language);
             Context localized = UiPreferences.localized(context);
             java.util.Set<String> seen = new java.util.HashSet<>();

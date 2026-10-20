@@ -2,12 +2,14 @@ package dev.cofodesk.auto.core;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.time.DayOfWeek;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 /** Local calendar buckets. Background time is deliberately not inferred from the last height. */
 public final class ActivityHistory {
@@ -31,11 +33,11 @@ public final class ActivityHistory {
     /** Original week/month sums truncated daily calories; year sums truncated monthly calories. */
     public long estimatedCalories(Period period, long nowMs, double weightKg) {
         if (period != Period.YEAR) return selected(period, nowMs).mapToLong(e -> StandingCalories.estimate(e.getValue(), weightKg)).sum();
-        Map<java.time.YearMonth, Long> months = new TreeMap<>();
-        selected(period, nowMs).forEach(e -> months.merge(java.time.YearMonth.from(e.getKey()), e.getValue(), Long::sum));
+        Map<YearMonth, Long> months = new TreeMap<>();
+        selected(period, nowMs).forEach(e -> months.merge(YearMonth.from(e.getKey()), e.getValue(), Long::sum));
         return months.values().stream().mapToLong(ms -> StandingCalories.estimate(ms, weightKg)).sum();
     }
-    private java.util.stream.Stream<Map.Entry<LocalDate, Long>> selected(Period period, long nowMs) {
+    private Stream<Map.Entry<LocalDate, Long>> selected(Period period, long nowMs) {
         LocalDate date = date(nowMs);
         LocalDate first = switch (period) {
             case DAY -> date;

@@ -15,7 +15,9 @@
 | `core/DeskSession` | 記憶高度、資料驗證、單位、前景坐站統計、目標與提醒 | JVM 測試、持久化 round trip、邊界案例 |
 | `core/ActivityHistory` | 依本機日曆分桶，日／週／月／年彙總 | 跨日、跨年、週一、DST 測試 |
 | `SessionStore` | 私有 SharedPreferences；損壞欄位各自回復預設值。模擬桌停止位置另存在 `simulator` 偏好 | Activity recreation、App 重開、JVM 損壞資料案例 |
-| `MainActivity` | 四個分頁、可捲動畫面、操作與生命週期 | Espresso 操作測試與模擬器截圖 |
+| `MainActivity` | 生命週期、前景計時、分頁導覽、權限結果；使用者操作統一經過驗證路徑（存檔、更新畫面，拒絕原因轉成訊息） | Espresso 操作測試與模擬器截圖 |
+| `ControlPage`、`HistoryPage`、`ReminderPage`、`SettingsPage`、`DevicesPage` | 各分頁自己的畫面與更新；共用 `Views`（元件工廠）與 `Palette`（淺色／深色配色） | Espresso 操作測試 |
+| `UiText` | 把 core 的 `Refused.Reason`、`Alert`、`Fault` 對應到五種語言的文字；switch 窮舉，漏掉對應就無法編譯 | 每種語言逐一檢查所有代碼都有不重複的文字 |
 | `ReminderReceiver` | Android 通知與一次性 inexact alarm | 倒數測試及模擬器權限／通知測試 |
 | `BleInspector` | 有限時掃描、明確選擇裝置、列出 GATT service/characteristic UUID 和 properties | Android 權限及未找到裝置情境；真桌 GATT 待驗證 |
 

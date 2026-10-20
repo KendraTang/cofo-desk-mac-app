@@ -1,6 +1,6 @@
 import asyncio
 import time
-from types import SimpleNamespace as Item
+from types import SimpleNamespace
 import unittest
 
 from cofo_desk.desk import Desk, DeskError, select_profile
@@ -38,8 +38,8 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
                                                "stop_errors": [], "physical_stop_confirmed": False})
 
     def with_login(self, peripheral):
-        login = Item(uuid=LOGIN_CHARACTERISTIC, properties=["write"])
-        peripheral.services.append(Item(uuid=LOGIN_SERVICE, characteristics=[login]))
+        login = SimpleNamespace(uuid=LOGIN_CHARACTERISTIC, properties=["write"])
+        peripheral.services.append(SimpleNamespace(uuid=LOGIN_SERVICE, characteristics=[login]))
         return login
 
     async def test_stop_with_login_service_is_stop_login_stop(self):
@@ -100,8 +100,8 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_write_without_response_and_conditional_login(self):
         peripheral = Peripheral(response=False)
-        login = Item(uuid=LOGIN_CHARACTERISTIC, properties=["write-without-response"])
-        peripheral.services.append(Item(uuid=LOGIN_SERVICE, characteristics=[login]))
+        login = SimpleNamespace(uuid=LOGIN_CHARACTERISTIC, properties=["write-without-response"])
+        peripheral.services.append(SimpleNamespace(uuid=LOGIN_SERVICE, characteristics=[login]))
         async with self.desk(peripheral) as desk:
             await desk.prepare()
         self.assertEqual(peripheral.sent[0], (login, LOGIN_BYTES, False))

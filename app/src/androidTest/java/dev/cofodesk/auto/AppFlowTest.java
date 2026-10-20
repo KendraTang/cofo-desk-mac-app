@@ -31,7 +31,7 @@ public class AppFlowTest {
     private void relaunch() { scenario.close(); scenario = ActivityScenario.launch(MainActivity.class); }
 
     @Test public void defaultLanguageIsTraditionalChinese() {
-        assertEquals("zh-TW", UiPreferences.language(context));
+        assertEquals(UiPreferences.Language.ZH_TW, UiPreferences.language(context));
         onView(withId(R.id.status)).check(matches(withText("尚未連線")));
     }
     @Test public void connectionJogPresetAndStop() {

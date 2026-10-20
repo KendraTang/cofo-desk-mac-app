@@ -1,42 +1,48 @@
 package dev.cofodesk.auto;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.LocaleList;
 import java.util.Locale;
 
 /** App-only preferences; never changes the emulator/device language or theme. */
 final class UiPreferences {
-    static final String[] LANGUAGES = {"zh-TW", "en", "ja", "zh-CN", "ko"};
-    static final String[] LANGUAGE_NAMES = {"繁體中文", "English", "日本語", "简体中文", "한국어"};
-    static String language(Context context) {
-        String selected = context.getSharedPreferences("appearance", 0).getString("language", "zh-TW");
-        for (String language : LANGUAGES) if (language.equals(selected)) return selected;
-        return "zh-TW";
+    enum Language {
+        ZH_TW("zh-TW", "繁體中文"), EN("en", "English"), JA("ja", "日本語"), ZH_CN("zh-CN", "简体中文"), KO("ko", "한국어");
+        final String tag, displayName;
+        Language(String tag, String displayName) { this.tag = tag; this.displayName = displayName; }
+        static final Language DEFAULT = ZH_TW;
     }
-    static void language(Context context, String language) {
-        for (String supported : LANGUAGES) if (supported.equals(language)) {
-            context.getSharedPreferences("appearance", 0).edit().putString("language", language).apply();
-            return;
-        }
-        throw new IllegalArgumentException("Unsupported language");
+    enum Theme {
+        SYSTEM("system"), LIGHT("light"), DARK("dark");
+        final String stored;
+        Theme(String stored) { this.stored = stored; }
     }
-    static String theme(Context context) {
-        android.content.SharedPreferences p = context.getSharedPreferences("appearance", 0);
-        String mode = p.getString("theme", p.contains("dark") ? (p.getBoolean("dark", false) ? "dark" : "light") : "system");
-        return mode.equals("light") || mode.equals("dark") ? mode : "system";
+    private static SharedPreferences prefs(Context context) { return context.getSharedPreferences("appearance", 0); }
+
+    static Language language(Context context) {
+        String selected = prefs(context).getString("language", Language.DEFAULT.tag);
+        for (Language language : Language.values()) if (language.tag.equals(selected)) return language;
+        return Language.DEFAULT;
     }
-    static void theme(Context context, String mode) {
-        if (!mode.equals("system") && !mode.equals("light") && !mode.equals("dark")) throw new IllegalArgumentException("Unsupported theme");
-        context.getSharedPreferences("appearance", 0).edit().putString("theme", mode).remove("dark").apply();
+    static void language(Context context, Language language) { prefs(context).edit().putString("language", language.tag).apply(); }
+    static Theme theme(Context context) {
+        SharedPreferences p = prefs(context);
+        // Versions before the three-way setting stored a "dark" boolean.
+        String stored = p.getString("theme", p.contains("dark") ? (p.getBoolean("dark", false) ? "dark" : "light") : "system");
+        for (Theme theme : Theme.values()) if (theme.stored.equals(stored)) return theme;
+        return Theme.SYSTEM;
     }
+    static void theme(Context context, Theme theme) { prefs(context).edit().putString("theme", theme.stored).remove("dark").apply(); }
     static boolean dark(Context context) {
-        return theme(context).equals("dark") || (theme(context).equals("system") &&
+        Theme theme = theme(context);
+        return theme == Theme.DARK || (theme == Theme.SYSTEM &&
                 (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
     }
     static Context localized(Context context) {
         Configuration config = new Configuration(context.getResources().getConfiguration());
-        config.setLocales(new LocaleList(Locale.forLanguageTag(language(context))));
+        config.setLocales(new LocaleList(Locale.forLanguageTag(language(context).tag)));
         return context.createConfigurationContext(config);
     }
 }

@@ -3,7 +3,7 @@ from contextlib import redirect_stdout
 import io
 import json
 import sys
-from types import SimpleNamespace as Item
+from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -20,7 +20,7 @@ class BleEntryTest(unittest.IsolatedAsyncioTestCase):
             constructions.append((address, kwargs))
             return peripheral
         args = parser().parse_args(["--device", "peripheral-uuid", "stop"])
-        with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakClient=factory)):
+        with patch("cofo_desk.cli.bleak_module", return_value=SimpleNamespace(BleakClient=factory)):
             result = (await run(args)).value
         self.assertEqual(constructions, [("peripheral-uuid", {"timeout": 10.0})])
         self.assertFalse(result["simulated"])
@@ -31,20 +31,20 @@ class BleEntryTest(unittest.IsolatedAsyncioTestCase):
     async def test_inspect_reads_metadata_without_any_writes_or_subscriptions(self):
         peripheral = Peripheral()
         args = parser().parse_args(["--device", "peripheral-uuid", "inspect"])
-        with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakClient=lambda *a, **k: peripheral)):
+        with patch("cofo_desk.cli.bleak_module", return_value=SimpleNamespace(BleakClient=lambda *a, **k: peripheral)):
             result = (await run(args)).value
         self.assertEqual(len(result["services"]), 1)
         self.assertEqual(peripheral.sent, [])
         self.assertEqual(peripheral.subscribe_count, 0)
 
     async def test_real_scan_keeps_unknown_devices_and_uses_advertisement_rssi(self):
-        scanner = Item(discover=AsyncMock(return_value={
-            "one": (Item(address="uuid-one", name="COFO"), Item(local_name=None, rssi=-70,
+        scanner = SimpleNamespace(discover=AsyncMock(return_value={
+            "one": (SimpleNamespace(address="uuid-one", name="COFO"), SimpleNamespace(local_name=None, rssi=-70,
                      service_uuids=["0000ff12-0000-1000-8000-00805f9b34fb"])),
-            "two": (Item(address="uuid-two", name=None), Item(local_name="Other", rssi=-50, service_uuids=[])),
+            "two": (SimpleNamespace(address="uuid-two", name=None), SimpleNamespace(local_name="Other", rssi=-50, service_uuids=[])),
         }))
         args = parser().parse_args(["scan", "--seconds", "2"])
-        with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakScanner=scanner)):
+        with patch("cofo_desk.cli.bleak_module", return_value=SimpleNamespace(BleakScanner=scanner)):
             result = (await run(args)).value
         scanner.discover.assert_awaited_once_with(timeout=2, return_adv=True)
         self.assertEqual([d["address"] for d in result["devices"]], ["uuid-two", "uuid-one"])

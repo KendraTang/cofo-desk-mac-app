@@ -9,7 +9,7 @@ import signal
 import sys
 import tempfile
 import threading
-from types import SimpleNamespace as Item
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -56,7 +56,7 @@ class InterruptTest(unittest.TestCase):
                 os.kill(os.getpid(), signum)
         sender = threading.Thread(target=send)
         output = io.StringIO()
-        with patch("cofo_desk.cli.bleak_module", return_value=Item(BleakClient=lambda *a, **k: peripheral)), \
+        with patch("cofo_desk.cli.bleak_module", return_value=SimpleNamespace(BleakClient=lambda *a, **k: peripheral)), \
                 redirect_stdout(output):
             sender.start()
             code = main(["--json", "--device", "fixture"] + arguments)

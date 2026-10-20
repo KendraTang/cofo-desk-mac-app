@@ -163,27 +163,27 @@ public final class DeskSession {
         // Each field recovers independently; a corrupt value must not make the app unlaunchable.
         // Values saved by older versions are kept, even if they equal the old 170 cm / 65 kg defaults:
         // the old format cannot tell whether the user typed them.
-        int cm = integer(p, "heightCm", 0, 80, 250);
+        int cm = boundedInt(p, "heightCm", 0, 80, 250);
         bodyHeightCm = cm == 0 ? OptionalInt.empty() : OptionalInt.of(cm);
         try { double kg = Double.parseDouble(p.getProperty("weightKg", ""));
             weightKg = validWeight(kg) ? OptionalDouble.of(kg) : OptionalDouble.empty();
         } catch (NumberFormatException e) { weightKg = OptionalDouble.empty(); }
-        standingThresholdMm = integer(p, "threshold", DEFAULT_THRESHOLD_MM, SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
+        standingThresholdMm = boundedInt(p, "threshold", DEFAULT_THRESHOLD_MM, SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
         inches = Boolean.parseBoolean(p.getProperty("inches", "false"));
-        for (int i = 0; i < presets.length; i++) presets[i] = integer(p, "preset" + i, DEFAULT_PRESETS[i], SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
-        standingMs = nonnegative(p, "standingMs");
-        connectedMs = Math.max(standingMs, nonnegative(p, "connectedMs"));
-        reminderAtMs = nonnegative(p, "reminderAtMs");
-        dailyGoalMinutes = integer(p, "goal", 0, 0, MAX_REMINDER_MINUTES);
-        sittingReminderMinutes = integer(p, "sitReminder", 0, 0, MAX_REMINDER_MINUTES);
-        standingReminderMinutes = integer(p, "standReminder", 0, 0, MAX_REMINDER_MINUTES);
+        for (int i = 0; i < presets.length; i++) presets[i] = boundedInt(p, "preset" + i, DEFAULT_PRESETS[i], SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
+        standingMs = nonnegativeLong(p, "standingMs");
+        connectedMs = Math.max(standingMs, nonnegativeLong(p, "connectedMs"));
+        reminderAtMs = nonnegativeLong(p, "reminderAtMs");
+        dailyGoalMinutes = boundedInt(p, "goal", 0, 0, MAX_REMINDER_MINUTES);
+        sittingReminderMinutes = boundedInt(p, "sitReminder", 0, 0, MAX_REMINDER_MINUTES);
+        standingReminderMinutes = boundedInt(p, "standReminder", 0, 0, MAX_REMINDER_MINUTES);
         history.restore(p);
     }
-    private static int integer(Properties p, String key, int fallback, int min, int max) {
+    private static int boundedInt(Properties p, String key, int fallback, int min, int max) {
         try { int n = Integer.parseInt(p.getProperty(key, "")); return n >= min && n <= max ? n : fallback; }
         catch (NumberFormatException e) { return fallback; }
     }
-    private static long nonnegative(Properties p, String key) {
+    private static long nonnegativeLong(Properties p, String key) {
         try { return Math.max(0, Long.parseLong(p.getProperty(key, "0"))); }
         catch (NumberFormatException e) { return 0; }
     }

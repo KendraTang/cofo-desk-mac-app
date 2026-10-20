@@ -1,6 +1,6 @@
 """Shared GATT fixtures for the CLI and desk tests."""
 import asyncio
-from types import SimpleNamespace as Item
+from types import SimpleNamespace
 
 from cofo_desk.protocol import UP
 
@@ -8,11 +8,11 @@ from cofo_desk.protocol import UP
 class Peripheral:
     """Independent GATT fixture: no use of the simulator's frame processing."""
     def __init__(self, *, response=True, height=True, limits=True, notifications=True):
-        self.writer = Item(uuid="0000ff01-0000-1000-8000-00805f9b34fb",
+        self.writer = SimpleNamespace(uuid="0000ff01-0000-1000-8000-00805f9b34fb",
                            properties=["write" if response else "write-without-response"])
-        self.reader = Item(uuid="0000ff02-0000-1000-8000-00805f9b34fb",
+        self.reader = SimpleNamespace(uuid="0000ff02-0000-1000-8000-00805f9b34fb",
                            properties=["notify"] if notifications else ["read"])
-        self.services = [Item(uuid="0000ff12-0000-1000-8000-00805f9b34fb",
+        self.services = [SimpleNamespace(uuid="0000ff12-0000-1000-8000-00805f9b34fb",
                               characteristics=[self.writer, self.reader])]
         self.is_connected = False
         self.callback = None
