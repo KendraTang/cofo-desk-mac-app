@@ -70,6 +70,7 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 - `.venv/bin/python -m pip install -e '.[ble]'` 成功安裝 `cofo-desk-auto 0.1.0`、Bleak 3.0.2 與 PyObjC 12.2.2；`pip check` 沒有相依衝突。
 - 已檢查安裝版 Bleak 的 `write_gatt_char`／`start_notify`／`discover` 簽名與目前呼叫相容。`cofo-desk --version` 輸出 0.1.0、`--help` 列出 8 個子指令。
 - 程序層測試涵蓋模擬狀態跨指令保存、毫米／公分／英吋目標、限時升降／停止、逾時後停止、Ctrl-C 結束碼 130、互斥檔案鎖、無效輸入及損壞狀態拒絕。BLE 入口使用獨立 GATT fixture／mock，不會碰觸實體桌。
+- 停止可靠性更新（2026-10-20）：60 通過、0 失敗、0 跳過。新增 SIGTERM／SIGHUP／SIGINT 在移動中送 STOP 並分別以 143／129／130 結束、清理中重複訊號不中斷 STOP、STOP 與斷線同時失敗的回報、獨立 stop 的 STOP→登入→STOP 次序（無登入 service、登入閘門、登入卡住、中途斷線），以及模擬器拒收 checksum／結尾錯誤的目標封包。訊號測試使用 GATT fixture 與模擬裝置，沒有連真桌。
 - 真桌掃描、連線、登入、通知 framing、控制／停止及限位保證尚未驗證。此次 CLI 工作沒有變更 Android App。
 
 操作說明與控制限制見 [CLI 文件](cli.md)。

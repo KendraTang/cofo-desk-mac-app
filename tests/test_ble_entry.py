@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 from cofo_desk.cli import bleak_module, main, parser, run
 from cofo_desk.desk import DeskError
-from test_desk import Peripheral
+from support import Peripheral
 
 
 class BleEntryTest(unittest.IsolatedAsyncioTestCase):

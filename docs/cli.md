@@ -55,9 +55,33 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 | `watch --seconds 10` | 每 0.5 秒顯示狀態，最長 3600 秒 |
 | `up/down --seconds 1` | 每 100 ms 重送方向指令；時間上限 30 秒，結束送 stop |
 | `goto 105 --unit cm --timeout 20` | 送一次毫米目標，等待通知進入容差後送 stop；逾時上限 120 秒 |
-| `stop` | 連線與 profile 探索後直接送 stop，不等待通知、登入或初始化查詢 |
+| `stop` | 連線與 profile 探索後立即送 stop；裝置有登入 service 時再送登入與第二次 stop，不等待通知或初始化查詢 |
 
-移動前必須收到新高度與旅行限位，且沒有已回報錯誤。移動中高度超過 1.5 秒未更新、故障、逾時或 Ctrl-C 都會離開控制迴圈，嘗試送 stop 後斷線；斷線可能讓 stop 無法送達，錯誤會保留這項資訊。程序被強制終止或連線中斷的實體停止保證仍須硬體驗證。
+移動前必須收到新高度與旅行限位，且沒有已回報錯誤。移動中高度超過 1.5 秒未更新、故障、逾時或中斷訊號都會離開控制迴圈，嘗試送 stop 後斷線；斷線可能讓 stop 無法送達，錯誤會保留這項資訊。連線中斷的實體停止保證仍須硬體驗證。
+
+`up`／`down` 在高度距離限位 1 mm 內就停止送方向指令；移動前與移動中的檢查容許回報高度超出限位 3 mm，以吸收換算與取樣誤差。這兩個是軟體容差，不代表硬體限位保證。
+
+### 獨立 `stop` 的登入次序
+
+原 App 送任何控制指令前都會先嘗試登入，但登入是否為 STOP 的必要條件尚未用真桌證實。為了不讓登入延後 STOP，也不讓登入失敗擋住 STOP，`stop` 依序執行：
+
+1. 立即送 STOP。
+2. 若裝置有登入 service，送登入寫入（`--login-timeout`，預設 1 秒，最多 10 秒）。
+3. 再送一次 STOP。
+
+沒有登入 service 時只送一次 STOP。第一次 STOP 被拒、登入失敗或逾時，都不會跳過最後一次 STOP；連線已斷時，剩下的步驟記為未執行，不自動重連重播。輸出的 `steps` 逐步列出結果；登入寫入完成不代表登入成功。全部 STOP 都沒寫入成功時，指令以錯誤結束。這個次序只通過 fixture 測試，真桌相容性仍待驗證。
+
+### 中斷訊號
+
+SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清理路徑：第一個訊號取消目前操作，移動中會嘗試送 STOP，再斷線。清理期間收到的後續訊號只記錄，不會打斷 STOP 或斷線；STOP 寫入最長 3 秒、斷線最長 5 秒，不重試。SIGKILL 等無法攔截的終止不保證送出 STOP 或輸出結果。
+
+中斷輸出包含：
+
+- `stop_attempted`：是否真的開始寫入 STOP；在連線或尚未開始移動前中斷時為 false。
+- `stop_write_completed`：是否有 STOP 寫入正常完成，失敗原因列在 `stop_errors`。無 response 的寫入完成也不等於裝置 ACK。
+- `physical_stop_confirmed`：一律為 false，桌子實際狀態未知。
+- `ignored_signals`：清理期間收到、只記錄未處理的訊號。
+- `cleanup_errors`：STOP 或斷線失敗時的補充資訊。
 
 `goto` 接受 cm／in／mm，轉成最接近的整數毫米，並檢查桌子回報的限位。完成表示觀察到高度在目標容差內（cm 通知 1 mm，in 通知 3 mm），不表示取得馬達停止 ACK。`stop_sent` 同樣只表示寫入完成，`physical_stop_confirmed` 為 false。
 
@@ -67,9 +91,9 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 
 ## JSON 與模擬狀態
 
-`--json` 的單次指令輸出一個 JSON object；`watch` 輸出 JSON Lines。執行失敗輸出 `{"error": "..."}`，結束碼 1；參數錯誤為 argparse 訊息、結束碼 2；Ctrl-C 為 130。狀態中的 `connected` 與 `sample_age_seconds` 是取樣當時的值，單次指令結束會關閉連線。
+`--json` 的單次指令輸出一個 JSON object；`watch` 輸出 JSON Lines。執行失敗輸出 `{"error": "..."}`，結束碼 1；參數錯誤為 argparse 訊息、結束碼 2；中斷時 SIGINT 為 130、SIGTERM 為 143、SIGHUP 為 129。狀態中的 `connected` 與 `sample_age_seconds` 是取樣當時的值，單次指令結束會關閉連線。
 
-模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s。
+模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬周邊只接受完整且 checksum、結尾正確的指令封包。它收到 UP／DOWN 後會持續移動到 STOP 或限位，沒有模擬硬體漏收重送時的停止時限，因為這個時限尚無證據。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s。
 
 模擬狀態只保存停止位置，不保存或恢復移動指令；與 Android App 資料互相獨立。預設檔案：
 
@@ -84,4 +108,4 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 python3 -m unittest discover -s tests -v
 ```
 
-40 個測試涵蓋協定固定向量、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、BLE 入口 mock、跨程序狀態、Ctrl-C 及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。
+60 個測試涵蓋協定固定向量、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。

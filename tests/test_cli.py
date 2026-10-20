@@ -4,7 +4,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 
@@ -56,7 +55,8 @@ class CliTest(unittest.TestCase):
         self.assertGreater(raised, 720)
         lowered = self.value("down", "--seconds", "0.1")["status"]["height_mm"]
         self.assertLess(lowered, raised)
-        self.assertEqual(self.value("stop"), {"simulated": True, "stop_sent": True, "physical_stop_confirmed": False})
+        self.assertEqual(self.value("stop"), {"simulated": True, "stop_sent": True, "physical_stop_confirmed": False,
+                                              "steps": [{"step": "stop", "completed": True, "error": None}]})
         self.assertEqual(self.value("status")["height_mm"], self.value("status")["height_mm"])
 
     def test_all_profiles_and_inspect(self):
@@ -69,8 +69,9 @@ class CliTest(unittest.TestCase):
     def test_scan_does_not_open_state_and_watch_is_json_lines(self):
         self.assertTrue(self.value("scan")["devices"][0]["supported_service_advertised"])
         self.assertFalse(self.state.exists())
+        # The sample count depends on machine speed; the contract is one JSON object per line.
         lines = self.command("watch", "--seconds", "0.08").stdout.splitlines()
-        self.assertEqual(len(lines), 2)
+        self.assertGreaterEqual(len(lines), 1)
         for line in lines:
             self.assertEqual(json.loads(line)["height_mm"], 720)
 
@@ -120,25 +121,25 @@ class CliTest(unittest.TestCase):
                 process.kill()
             process.communicate()
 
-    @unittest.skipIf(sys.platform == "win32", "POSIX signal and file locking")
-    def test_ctrl_c_during_movement_returns_130_and_persists_stopped_state(self):
-        process = subprocess.Popen(self.base + ["up", "--seconds", "30"], cwd=ROOT,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        try:
-            deadline = time.monotonic() + 3
-            while not self.state.with_suffix(".json.lock").exists():
-                if process.poll() is not None or time.monotonic() > deadline:
-                    self.fail("CLI did not connect to simulator")
-                time.sleep(0.01)
-            time.sleep(0.15)
-            process.send_signal(signal.SIGINT)
-            stdout, stderr = process.communicate(timeout=5)
-            self.assertEqual(process.returncode, 130, stderr)
-            self.assertIn("Interrupted", json.loads(stdout)["error"])
-            stopped = self.value("status")["height_mm"]
-            self.assertGreater(stopped, 720)
-            self.assertEqual(self.value("status")["height_mm"], stopped)
-        finally:
-            if process.poll() is None:
-                process.kill()
-            process.communicate()
+    @unittest.skipIf(sys.platform == "win32", "POSIX signals")
+    def test_each_signal_cancels_once_reports_and_persists_state(self):
+        # Movement-time STOP is covered in-process (test_interrupts); this checks real process wiring.
+        for signum, code in [(signal.SIGINT, 130), (signal.SIGTERM, 143), (signal.SIGHUP, 129)]:
+            with self.subTest(signal=signum.name):
+                self.state.unlink(missing_ok=True)
+                process = subprocess.Popen(self.base + ["watch", "--seconds", "30"], cwd=ROOT,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                try:
+                    self.assertEqual(json.loads(process.stdout.readline())["height_mm"], 720)
+                    process.send_signal(signum)
+                    stdout, stderr = process.communicate(timeout=5)
+                    self.assertEqual(process.returncode, code, stderr)
+                    report = json.loads(stdout.splitlines()[-1])
+                    self.assertEqual(report["signal"], signum.name)
+                    self.assertFalse(report["stop_attempted"])
+                    self.assertFalse(report["physical_stop_confirmed"])
+                    self.assertEqual(json.loads(self.state.read_text())["height_mm"], 720)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                    process.communicate()

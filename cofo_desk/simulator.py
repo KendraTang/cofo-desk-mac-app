@@ -10,7 +10,7 @@ import time
 from types import SimpleNamespace
 
 from .desk import DeskError
-from .protocol import DOWN, PROFILES, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP
+from .protocol import DOWN, PROFILES, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, target_frame
 
 
 def default_state_file():
@@ -122,7 +122,8 @@ class SimulatedClient:
         elif data in (UP, DOWN):
             self.direction = 1 if data == UP else -1
             self.target = None
-        elif len(data) == 8 and data[:4] == bytes.fromhex("F1F11B02"):
+        elif len(data) == 8 and data == target_frame(int.from_bytes(data[4:6], "big")):
+            # Re-encoding checks prefix, opcode, length, checksum and trailer together.
             target = int.from_bytes(data[4:6], "big")
             if not self.minimum <= target <= self.maximum:
                 raise DeskError("Simulator target is outside travel limits")

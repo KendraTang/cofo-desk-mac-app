@@ -1,6 +1,7 @@
 """One control session for both Bleak and the virtual GATT client."""
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 import math
 import time
 
@@ -12,6 +13,22 @@ from .protocol import (
 
 class DeskError(Exception):
     pass
+
+
+def describe(error):
+    return str(error) or type(error).__name__
+
+
+@dataclass
+class StopRecord:
+    """What this process did about STOP. A completed write is not a physical stop ACK."""
+    attempted: bool = False
+    completed: bool = False
+    errors: list = field(default_factory=list)
+
+    def report(self):
+        return {"stop_attempted": self.attempted, "stop_write_completed": self.completed,
+                "stop_errors": list(self.errors), "physical_stop_confirmed": False}
 
 
 def writable(characteristic):
@@ -43,7 +60,8 @@ def select_profile(services, name="auto", require_notify=True):
 
 class Desk:
     def __init__(self, client, *, profile="auto", native_unit="auto", simulated=False,
-                 connect_timeout=10.0, telemetry_timeout=3.0, init_interval=0.2):
+                 connect_timeout=10.0, telemetry_timeout=3.0, init_interval=0.2,
+                 write_timeout=3.0, login_timeout=1.0, stop_record=None):
         self.client = client
         self.profile_name = profile
         self.native_unit = native_unit
@@ -51,6 +69,9 @@ class Desk:
         self.connect_timeout = connect_timeout
         self.telemetry_timeout = telemetry_timeout
         self.init_interval = init_interval
+        self.write_timeout = write_timeout
+        self.login_timeout = login_timeout
+        self.stops = stop_record if stop_record is not None else StopRecord()
         self.profile = self.writer = self.reader = None
         self.raw_height = self.reported_unit = self.limits = self.error = None
         self.height_at = None
@@ -80,7 +101,7 @@ class Desk:
         # Cleanup must also run for partial connections and cancelled operations.
         await asyncio.wait_for(self.client.disconnect(), 5.0)
 
-    def _connected(self):
+    def ensure_connected(self):
         if not self.client.is_connected:
             raise DeskError("Device disconnected")
 
@@ -107,13 +128,8 @@ class Desk:
             await asyncio.wait_for(self.client.start_notify(self.reader, self._receive), self.telemetry_timeout)
         except TimeoutError as error:
             raise DeskError("Timed out subscribing to notifications") from error
-        for service in self.client.services:
-            if service.uuid.lower() == LOGIN_SERVICE:
-                candidates = [c for c in service.characteristics
-                              if c.uuid.lower() == LOGIN_CHARACTERISTIC and writable(c)]
-                if len(candidates) != 1:
-                    raise DeskError("Login service has no unambiguous writable login characteristic")
-                await self._write_to(candidates[0], LOGIN_BYTES)
+        if self._has_login_service():
+            await self._write_to(self._login_characteristic(), LOGIN_BYTES)
         # Original app's 0/.2/.4 s height queries and .8/1/1.2 s limits queries.
         for index in range(7):
             if index in (0, 1, 2):
@@ -124,11 +140,25 @@ class Desk:
                 await asyncio.sleep(self.init_interval)
         await self.wait_telemetry(require_limits=require_limits)
 
-    async def _write_to(self, characteristic, data):
+    def _has_login_service(self):
+        return any(service.uuid.lower() == LOGIN_SERVICE for service in self.client.services)
+
+    def _login_characteristic(self):
+        candidates = [c for service in self.client.services if service.uuid.lower() == LOGIN_SERVICE
+                      for c in service.characteristics if c.uuid.lower() == LOGIN_CHARACTERISTIC and writable(c)]
+        if len(candidates) != 1:
+            raise DeskError("Login service has no unambiguous writable login characteristic")
+        return candidates[0]
+
+    async def _write_to(self, characteristic, data, timeout=None):
+        timeout = self.write_timeout if timeout is None else timeout
         async with self._write_lock:
-            self._connected()
-            await asyncio.wait_for(self.client.write_gatt_char(
-                characteristic, data, response="write" in characteristic.properties), 3.0)
+            self.ensure_connected()
+            try:
+                await asyncio.wait_for(self.client.write_gatt_char(
+                    characteristic, data, response="write" in characteristic.properties), timeout)
+            except TimeoutError as error:
+                raise DeskError(f"Write timed out after {timeout:g} s") from error
 
     async def write(self, data):
         if self.writer is None:
@@ -138,7 +168,7 @@ class Desk:
     async def wait_telemetry(self, *, require_limits=False, after_sequence=0):
         deadline = time.monotonic() + self.telemetry_timeout
         while True:
-            self._connected()
+            self.ensure_connected()
             if self.height_sequence > after_sequence and (self.limits is not None or not require_limits):
                 return
             if time.monotonic() >= deadline:
@@ -185,7 +215,7 @@ class Desk:
         self._guard()
 
     def _guard(self):
-        self._connected()
+        self.ensure_connected()
         if self.error:
             raise DeskError(f"Desk reported {self.error}; movement refused")
         if self.height_at is None or time.monotonic() - self.height_at > 1.5:
@@ -195,21 +225,55 @@ class Desk:
         if not self.limits[0] - 3 <= self.height_mm() <= self.limits[1] + 3:
             raise DeskError("Reported height is outside the travel limits")
 
+    async def send_stop(self):
+        if self.writer is None:
+            raise DeskError("No control characteristic selected; STOP not attempted")
+        self.stops.attempted = True
+        try:
+            await self.write(STOP)
+        except Exception as error:
+            self.stops.errors.append(describe(error))
+            raise
+        self.stops.completed = True
+
+    async def stop_now(self):
+        """Standalone stop: STOP, then conditional login and STOP again. Never waits for telemetry."""
+        self.profile, self.writer, self.reader = select_profile(
+            self.client.services, self.profile_name, require_notify=False)
+        plan = [("stop", self.send_stop)]
+        if self._has_login_service():
+            async def login():
+                await self._write_to(self._login_characteristic(), LOGIN_BYTES, self.login_timeout)
+            plan += [("login", login), ("stop", self.send_stop)]
+        steps = []
+        for name, action in plan:
+            # A dropped link is reported, never silently reconnected and replayed.
+            if not self.client.is_connected:
+                steps.append({"step": name, "completed": False, "error": "not attempted: device disconnected"})
+                continue
+            try:
+                await action()
+            except Exception as error:
+                steps.append({"step": name, "completed": False, "error": describe(error)})
+            else:
+                steps.append({"step": name, "completed": True, "error": None})
+        return steps
+
     @asynccontextmanager
     async def _stopping(self):
         try:
             yield
         except BaseException as original:
             try:
-                await self.write(STOP)
+                await self.send_stop()
             except Exception as stop_error:
-                original.add_note(f"Stop delivery also failed: {stop_error}")
+                original.add_note(f"Stop delivery also failed: {describe(stop_error)}")
             raise
         else:
             try:
-                await self.write(STOP)
+                await self.send_stop()
             except Exception as error:
-                raise DeskError(f"Could not deliver stop: {error}") from error
+                raise DeskError(f"Could not deliver stop: {describe(error)}") from error
 
     async def jog(self, direction, seconds):
         if direction not in ("up", "down") or not math.isfinite(seconds) or not 0 < seconds <= 30:

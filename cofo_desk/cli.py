@@ -4,12 +4,18 @@ import asyncio
 import json
 import math
 from pathlib import Path
+import signal
 import sys
 import time
 
 from . import __version__
-from .desk import Desk, DeskError
-from .protocol import PROFILES, STOP
+from .desk import Desk, DeskError, StopRecord
+from .protocol import PROFILES
+
+# Shell convention: 128 + signal number.
+INTERRUPT_CODES = {signal.SIGINT: 130, signal.SIGTERM: 143}
+if hasattr(signal, "SIGHUP"):
+    INTERRUPT_CODES[signal.SIGHUP] = 129
 
 
 def positive_number(text):
@@ -43,6 +49,8 @@ def parser():
                         help="override interpretation of incoming height fields")
     result.add_argument("--connect-timeout", type=bounded_number(60), default=10.0)
     result.add_argument("--telemetry-timeout", type=bounded_number(30), default=3.0)
+    result.add_argument("--login-timeout", type=bounded_number(10), default=1.0,
+                        help="login write timeout for the standalone stop command")
     sub = result.add_subparsers(dest="command", required=True)
     scan = sub.add_parser("scan", help="discover BLE peripherals without connecting")
     scan.add_argument("--seconds", type=bounded_number(30), default=5.0)
@@ -88,6 +96,8 @@ def emit(value, as_json):
             print(f"{value['direction']} finished ({value['reason']}); stop sent.", flush=True)
         emit(value["status"], False)
     else:
+        for step in value["steps"]:
+            print(f"{step['step']}: {'written' if step['completed'] else step['error']}", flush=True)
         print("Stop sent. Physical stop is not confirmed by the protocol.", flush=True)
 
 
@@ -99,7 +109,7 @@ def bleak_module():
     return bleak
 
 
-async def run(args):
+async def run(args, stops=None):
     if args.command == "scan":
         if args.simulate:
             advertised = next(p for p in PROFILES if p.name == ("ff12" if args.profile == "auto" else args.profile))
@@ -122,19 +132,23 @@ async def run(args):
         client = bleak_module().BleakClient(args.device, timeout=args.connect_timeout)
     async with Desk(client, profile=args.profile, native_unit=args.native_unit, simulated=args.simulate,
                     connect_timeout=args.connect_timeout, telemetry_timeout=args.telemetry_timeout,
-                    init_interval=0 if args.simulate else 0.2) as desk:
+                    init_interval=0 if args.simulate else 0.2, login_timeout=args.login_timeout,
+                    stop_record=stops) as desk:
         if args.command == "inspect":
             return desk.inspect()
-        await desk.prepare(telemetry=args.command != "stop", require_limits=args.command in ("goto", "up", "down"))
         if args.command == "stop":
-            await desk.write(STOP)
-            return {"simulated": args.simulate, "stop_sent": True, "physical_stop_confirmed": False}
-        elif args.command == "status":
+            steps = await desk.stop_now()
+            if not desk.stops.completed:
+                raise DeskError("No STOP write completed: " + "; ".join(
+                    f"{step['step']}: {step['error']}" for step in steps))
+            return {"simulated": args.simulate, "stop_sent": True, "steps": steps, "physical_stop_confirmed": False}
+        await desk.prepare(require_limits=args.command in ("goto", "up", "down"))
+        if args.command == "status":
             return desk.snapshot()
         elif args.command == "watch":
             deadline = time.monotonic() + args.seconds
             while True:
-                desk._connected()
+                desk.ensure_connected()
                 emit(desk.snapshot(), args.json)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
@@ -144,6 +158,46 @@ async def run(args):
             return await desk.jog(args.command, args.seconds)
         elif args.command == "goto":
             return await desk.go_to(args.target_mm, args.timeout)
+
+
+class Interrupted(Exception):
+    def __init__(self, received, stops, notes):
+        super().__init__(signal.Signals(received[0]).name)
+        self.received, self.stops, self.notes = received, stops, notes
+
+    def report(self):
+        stops = self.stops.report()
+        if not stops["stop_attempted"]:
+            outcome = "no STOP was attempted"
+        elif stops["stop_write_completed"]:
+            outcome = "STOP write completed"
+        else:
+            outcome = "STOP write failed: " + "; ".join(stops["stop_errors"])
+        return {"error": f"Interrupted by {self}; {outcome}; physical desk state is unknown",
+                "signal": str(self), "ignored_signals": [signal.Signals(s).name for s in self.received[1:]],
+                **stops, "cleanup_errors": list(self.notes)}
+
+
+async def supervised(args, stops):
+    """The first signal cancels once; later ones are only recorded so STOP and disconnect finish."""
+    loop = asyncio.get_running_loop()
+    task = asyncio.current_task()
+    received = []
+    def handle(signum):
+        received.append(signum)
+        if len(received) == 1:
+            task.cancel()
+    for signum in INTERRUPT_CODES:
+        loop.add_signal_handler(signum, handle, signum)
+    try:
+        return await run(args, stops)
+    except asyncio.CancelledError as cancelled:
+        if not received:
+            raise
+        raise Interrupted(received, stops, getattr(cancelled, "__notes__", [])) from None
+    finally:
+        for signum in INTERRUPT_CODES:
+            loop.remove_signal_handler(signum)
 
 
 def main(argv=None):
@@ -160,12 +214,18 @@ def main(argv=None):
         if not math.isfinite(millimetres) or not 0 < round(millimetres) <= 65535:
             arguments.error("target must fit a positive 16-bit millimetre value")
         args.target_mm = round(millimetres)
+    stops = StopRecord()
     try:
-        value = asyncio.run(run(args))
+        value = asyncio.run(supervised(args, stops))
         if value is not None:
             emit(value, args.json)
+    except Interrupted as interrupted:
+        emit(interrupted.report(), args.json)
+        return INTERRUPT_CODES[interrupted.received[0]]
     except KeyboardInterrupt:
-        emit({"error": "Interrupted; any active movement attempted stop before disconnecting"}, args.json)
+        # Only reachable outside the supervised window, where no desk session is active.
+        emit({"error": "Interrupted outside the desk session; physical desk state is unknown",
+              "signal": "SIGINT", **stops.report()}, args.json)
         return 130
     except Exception as error:
         message = str(error) or type(error).__name__
