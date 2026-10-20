@@ -11,13 +11,18 @@ public final class DeskSession {
     /** Original reminder pickers: hour 0–24 and minute 0–50 in steps of 10. */
     public static final int MAX_REMINDER_MINUTES = 24 * 60 + 50;
     public static final int REMINDER_STEP_MINUTES = 10;
+    /** Accepted range for saved presets and the standing threshold. Movement is still bounded by the desk's own limits. */
+    public static final TravelLimits SETTING_RANGE = new TravelLimits(630, 1280);
+    private static final int[] DEFAULT_PRESETS = {720, 1050, 1180};
+    private static final int DEFAULT_THRESHOLD_MM = 950;
+    private static final int NUDGE_MM = 10;
     private final DeskPort desk;
-    private final int[] presets = {720, 1050, 1180};
+    private final int[] presets = DEFAULT_PRESETS.clone();
     private boolean inches;
     // Empty like the original app until the user enters them; no stand-in body data.
     private OptionalDouble weightKg = OptionalDouble.empty();
     private OptionalInt bodyHeightCm = OptionalInt.empty();
-    private int standingThresholdMm = 950;
+    private int standingThresholdMm = DEFAULT_THRESHOLD_MM;
     private long standingMs;
     private long connectedMs;
     private long reminderAtMs;
@@ -38,7 +43,13 @@ public final class DeskSession {
     public void disconnect() { desk.disconnect(); resetPosture(); }
     public void stop() { desk.stop(); }
     public void lock(boolean locked) { desk.setLocked(locked); }
-    public void jog(boolean up) { desk.moveTo(up ? SimulatedDesk.MAX_MM : SimulatedDesk.MIN_MM); }
+    public void jog(boolean up) { desk.startMove(up ? DeskPort.Direction.UP : DeskPort.Direction.DOWN); }
+    /** One small step for accessibility clicks, kept inside the desk's reported limits. */
+    public void nudge(boolean up) {
+        DeskPort.State now = state();
+        int target = now.heightMm() + (up ? NUDGE_MM : -NUDGE_MM);
+        desk.moveTo(now.limits().map(limits -> limits.clamp(target)).orElse(target));
+    }
     public void moveTo(int mm) { desk.moveTo(mm); }
     public int preset(int slot) { checkSlot(slot); return presets[slot]; }
     public void recall(int slot) { desk.moveTo(preset(slot)); }
@@ -48,11 +59,11 @@ public final class DeskSession {
         presets[slot] = state().heightMm();
     }
     private static void checkSlot(int slot) {
-        if (slot < 0 || slot > 2) throw new IllegalArgumentException("error_slot");
+        if (slot < 0 || slot >= DEFAULT_PRESETS.length) throw new IllegalArgumentException("error_slot");
     }
     public void setProfile(OptionalInt heightCm, OptionalDouble kg, int thresholdMm, boolean useInches) {
         if (heightCm.isPresent() && !validHeight(heightCm.getAsInt()) || kg.isPresent() && !validWeight(kg.getAsDouble())
-                || thresholdMm < SimulatedDesk.MIN_MM || thresholdMm > SimulatedDesk.MAX_MM)
+                || !SETTING_RANGE.contains(thresholdMm))
             throw new IllegalArgumentException("error_profile");
         bodyHeightCm = heightCm; weightKg = kg; standingThresholdMm = thresholdMm; inches = useInches;
     }
@@ -135,7 +146,7 @@ public final class DeskSession {
     public long reminderRemainingMs(long nowMs) { return Math.max(0, reminderAtMs - nowMs); }
     public Properties save() {
         Properties p = new Properties();
-        for (int i = 0; i < 3; i++) p.setProperty("preset" + i, "" + presets[i]);
+        for (int i = 0; i < presets.length; i++) p.setProperty("preset" + i, "" + presets[i]);
         p.setProperty("heightCm", bodyHeightCm.isPresent() ? "" + bodyHeightCm.getAsInt() : "");
         p.setProperty("weightKg", weightKg.isPresent() ? "" + weightKg.getAsDouble() : "");
         p.setProperty("threshold", "" + standingThresholdMm); p.setProperty("inches", "" + inches);
@@ -156,9 +167,9 @@ public final class DeskSession {
         try { double kg = Double.parseDouble(p.getProperty("weightKg", ""));
             weightKg = validWeight(kg) ? OptionalDouble.of(kg) : OptionalDouble.empty();
         } catch (NumberFormatException e) { weightKg = OptionalDouble.empty(); }
-        standingThresholdMm = integer(p, "threshold", 950, SimulatedDesk.MIN_MM, SimulatedDesk.MAX_MM);
+        standingThresholdMm = integer(p, "threshold", DEFAULT_THRESHOLD_MM, SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
         inches = Boolean.parseBoolean(p.getProperty("inches", "false"));
-        for (int i = 0; i < 3; i++) presets[i] = integer(p, "preset" + i, new int[]{720, 1050, 1180}[i], SimulatedDesk.MIN_MM, SimulatedDesk.MAX_MM);
+        for (int i = 0; i < presets.length; i++) presets[i] = integer(p, "preset" + i, DEFAULT_PRESETS[i], SETTING_RANGE.minMm(), SETTING_RANGE.maxMm());
         standingMs = nonnegative(p, "standingMs");
         connectedMs = Math.max(standingMs, nonnegative(p, "connectedMs"));
         reminderAtMs = nonnegative(p, "reminderAtMs");

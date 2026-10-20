@@ -10,8 +10,8 @@
 
 | 模組 | 責任 | 驗證方法 |
 | --- | --- | --- |
-| `core/DeskPort` | 提供真實或模擬的連線、高度、移動、停止、鎖定與故障狀態；高度統一 mm | 每個 transport 都要通過契約案例，不能用 App 推測高度代替硬體通知 |
-| `core/SimulatedDesk` | 可重現的桌子：63–128 cm、35 mm/s、碰撞停止與連線中斷 | JVM 測試；數值參考 Premium 規格，故障行為為測試模型 |
+| `core/DeskPort` | 提供真實或模擬的連線、高度、行程上下限、目標與方向移動、停止、鎖定與故障狀態；高度與上下限在同一份狀態快照，統一 mm。未連線、鎖定、故障或尚未取得上下限時拒絕移動 | 每個 transport 都要繼承 `DeskPortContract` 通過共用案例；目前由 `SimulatedDesk` 與限位不同、上下限需另行回報的測試替身 `ScriptedDesk` 共用。不能用 App 推測高度代替硬體通知 |
+| `core/SimulatedDesk` | 可重現的桌子：63–128 cm（連線後才回報上下限）、35 mm/s、碰撞停止與連線中斷 | JVM 測試；數值參考 Premium 規格，故障行為為測試模型 |
 | `core/DeskSession` | 記憶高度、資料驗證、單位、前景坐站統計、目標與提醒 | JVM 測試、持久化 round trip、邊界案例 |
 | `core/ActivityHistory` | 依本機日曆分桶，日／週／月／年彙總 | 跨日、跨年、週一、DST 測試 |
 | `SessionStore` | 私有 SharedPreferences；損壞欄位各自回復預設值。模擬桌停止位置另存在 `simulator` 偏好 | Activity recreation、App 重開、JVM 損壞資料案例 |

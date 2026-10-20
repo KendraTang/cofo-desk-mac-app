@@ -111,7 +111,8 @@
     <string name="error_not_connected">請先連接桌子</string>
     <string name="error_locked">桌子已鎖定</string>
     <string name="error_fault">請先清除故障</string>
-    <string name="error_height">高度須介於 63–128 cm</string>
+    <string name="error_height">高度超出桌子的行程範圍</string>
+    <string name="error_limits_unknown">尚未取得桌子的行程範圍，無法移動</string>
     <string name="error_time">時間不能倒退</string>
     <string name="error_save_preset">請在已連線且停止時儲存</string>
     <string name="error_slot">無效的記憶位置</string>

@@ -34,6 +34,7 @@
 | S17 | F-REM-02/03 通知通路 | 已授權通知，執行 receiver，再取消 | App 通知存在，取消後移除 | `receiverPostsNotificationAndCancellationRemovesIt`；此案例不證明 OS alarm 準時 |
 | S18 | 資料恢復 | 損壞部分偏好與日期資料，重新載入 | 逐欄回復，保留合法欄位；不崩潰 | `corruptPreferencesRecoverWithoutDiscardingValidFields`、`persistenceAndClear` |
 | S19 | F-SET-06 | 清除語言偏好後啟動 | App 預設為繁中，與裝置語言無關 | `defaultLanguageIsTraditionalChinese`；其餘流程測試改用 resource 比對，不寫死文案 |
+| S20 | DeskPort 契約 | 每個 transport 跑同一組案例；另一個測試替身使用 60–120 cm，連線後才回報上下限，且上下限可更新 | 未連線或未知上下限時拒絕移動；方向移動停在回報的上下限；超界目標被拒；停止、重連不續跑；鎖定與故障停止並拒絕移動；session 依桌子回報的上下限點動，不依模擬器常數 | `SimulatedDeskContractTest`、`ScriptedDeskContractTest`（繼承 `DeskPortContract`） |
 
 JVM 類別：`app/src/test/java/dev/cofodesk/auto/core/`。Android 類別：`app/src/androidTest/java/dev/cofodesk/auto/AppFlowTest.java` 與 `LocaleAppearanceTest.java`。
 

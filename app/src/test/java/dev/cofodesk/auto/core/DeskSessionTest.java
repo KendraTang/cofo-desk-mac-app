@@ -36,6 +36,7 @@ public class DeskSessionTest {
         assertThrows(IllegalArgumentException.class, () -> app.moveTo(629));
         assertThrows(IllegalArgumentException.class, () -> app.moveTo(1281));
         app.jog(true); desk.advance(100_000); assertEquals(1280, app.state().heightMm());
+        app.nudge(true); desk.advance(1000); assertEquals(1280, app.state().heightMm());
         app.jog(false); desk.advance(100_000); assertEquals(630, app.state().heightMm());
     }
     @Test public void collisionAndLockStopAndBlockMovement() {

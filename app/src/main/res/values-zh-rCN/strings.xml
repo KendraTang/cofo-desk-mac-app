@@ -111,7 +111,8 @@
     <string name="error_not_connected">请先连接桌子</string>
     <string name="error_locked">桌子已锁定</string>
     <string name="error_fault">请先清除故障</string>
-    <string name="error_height">高度须介于 63–128 cm</string>
+    <string name="error_height">高度超出桌子的行程范围</string>
+    <string name="error_limits_unknown">尚未获取桌子的行程范围，无法移动</string>
     <string name="error_time">时间不能倒退</string>
     <string name="error_save_preset">请在已连接且停止时保存</string>
     <string name="error_slot">无效的记忆位置</string>

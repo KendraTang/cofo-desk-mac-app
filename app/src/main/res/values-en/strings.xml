@@ -111,7 +111,8 @@
     <string name="error_not_connected">Connect a desk first</string>
     <string name="error_locked">Desk is locked</string>
     <string name="error_fault">Clear the fault first</string>
-    <string name="error_height">Height must be 63–128 cm</string>
+    <string name="error_height">Height is outside the desk\'s travel range</string>
+    <string name="error_limits_unknown">The desk has not reported its travel range yet</string>
     <string name="error_time">Elapsed time cannot be negative</string>
     <string name="error_save_preset">Connect and stop before saving a height</string>
     <string name="error_slot">Invalid memory slot</string>

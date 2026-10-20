@@ -177,7 +177,7 @@ public final class MainActivity extends Activity {
         }
         @Override public boolean performClick() {
             super.performClick();
-            if (!touchClick) runAction(() -> session.moveTo(Math.max(SimulatedDesk.MIN_MM, Math.min(SimulatedDesk.MAX_MM, session.state().heightMm() + (up ? 10 : -10)))));
+            if (!touchClick) runAction(() -> session.nudge(up));
             return true;
         }
     }
@@ -324,7 +324,7 @@ public final class MainActivity extends Activity {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         DeskDrawing() { super(MainActivity.this); setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO); }
         @Override protected void onDraw(Canvas canvas) {
-            float cx = getWidth() / 2f, floor = getHeight() - dp(12), top = floor - dp(50 + (session.state().heightMm() - 630) / 13f);
+            float cx = getWidth() / 2f, floor = getHeight() - dp(12), top = floor - dp(50 + (session.state().heightMm() - DeskSession.SETTING_RANGE.minMm()) / 13f);
             paint.setColor(LINE); canvas.drawRoundRect(cx - dp(120), floor, cx + dp(120), floor + dp(3), dp(2), dp(2), paint);
             paint.setColor(BLUE); canvas.drawRoundRect(cx - dp(105), top, cx + dp(105), top + dp(9), dp(4), dp(4), paint);
             paint.setColor(LEG);

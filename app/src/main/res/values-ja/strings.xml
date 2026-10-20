@@ -111,7 +111,8 @@
     <string name="error_not_connected">先にデスクを接続してください</string>
     <string name="error_locked">デスクはロック中です</string>
     <string name="error_fault">先にエラーを解除してください</string>
-    <string name="error_height">高さは63–128 cmで指定してください</string>
+    <string name="error_height">高さがデスクの昇降範囲外です</string>
+    <string name="error_limits_unknown">デスクの昇降範囲をまだ取得していないため移動できません</string>
     <string name="error_time">経過時間は負にできません</string>
     <string name="error_save_preset">接続して停止してから高さを保存してください</string>
     <string name="error_slot">無効なメモリー番号です</string>

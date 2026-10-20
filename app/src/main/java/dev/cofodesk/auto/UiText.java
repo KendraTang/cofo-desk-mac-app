@@ -10,6 +10,7 @@ final class UiText {
             case "error_locked" -> R.string.error_locked;
             case "error_fault" -> R.string.error_fault;
             case "error_height" -> R.string.error_height;
+            case "error_limits_unknown" -> R.string.error_limits_unknown;
             case "error_time" -> R.string.error_time;
             case "error_save_preset" -> R.string.error_save_preset;
             case "error_slot" -> R.string.error_slot;

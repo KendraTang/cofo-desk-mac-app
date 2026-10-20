@@ -111,7 +111,8 @@
     <string name="error_not_connected">먼저 책상을 연결하세요</string>
     <string name="error_locked">책상이 잠겨 있습니다</string>
     <string name="error_fault">먼저 오류를 해제하세요</string>
-    <string name="error_height">높이는 63–128 cm여야 합니다</string>
+    <string name="error_height">높이가 책상의 이동 범위를 벗어났습니다</string>
+    <string name="error_limits_unknown">책상의 이동 범위를 아직 받지 못해 움직일 수 없습니다</string>
     <string name="error_time">경과 시간은 음수일 수 없습니다</string>
     <string name="error_save_preset">연결하고 정지한 뒤 높이를 저장하세요</string>
     <string name="error_slot">잘못된 저장 위치입니다</string>
