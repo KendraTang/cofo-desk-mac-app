@@ -85,7 +85,9 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 
 `goto` 接受 cm／in／mm，轉成最接近的整數毫米，並檢查桌子回報的限位。完成表示觀察到高度在目標容差內（cm 通知 1 mm，in 通知 3 mm），不表示取得馬達停止 ACK。`stop_sent` 同樣只表示寫入完成，`physical_stop_confirmed` 為 false。
 
-高度優先依 `--native-unit cm/in`，其次使用已回報單位，最後採原 App 的 raw 值門檻推斷（`>=550` 視為 cm）。輸出包含 `unit_source`，需要時明確覆寫。通知只解析原 App 已知且完整的欄位；未知／截斷資料不會補成有效高度，不虛構 checksum、跨通知重組或錯誤清除協定。錯誤在該連線內保留，重新連線不能據此判定實體故障已排除。
+高度優先依 `--native-unit cm/in`，其次使用已回報單位，最後採原 App 的 raw 值門檻推斷（`>=550` 視為 cm）。輸出包含 `unit_source`，需要時明確覆寫。通知只解析原 App 已知且完整的欄位；未知／截斷資料不會補成有效高度，不虛構 checksum、跨通知重組或錯誤清除協定。這比原 App 嚴格：原 App 找到 `F201` 後，固定讀 length byte 之後的兩個 byte，不檢查宣告長度。例如 `F2F2010302D0` 宣告 3 byte、實際只有 2 byte，原 App 會顯示 72.0 cm，本工具則丟棄。若真桌確實會送這種封包，再依實機紀錄調整。錯誤在該連線內保留，重新連線不能據此判定實體故障已排除。
+
+`limits_mm` 把 `F2 F2 07` 的兩個值當成 mm。依據是原 App 在單位換算、進度計算與推薦高度三處都把它們當 mm 使用（見 [REA 調查](reverse-engineering.md)）；這是靜態推論，尚未用真桌面板對照。
 
 連線預設最長 10 秒、通知訂閱及初始化後等待 telemetry 各預設 3 秒，可用 `--connect-timeout`（最多 60）及 `--telemetry-timeout`（最多 30）調整。單次寫入最長 3 秒。`stop` 不等 telemetry，但仍需連線與 GATT 探索成功。
 
