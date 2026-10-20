@@ -53,7 +53,7 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 | `inspect` | 服務、characteristic UUID 與 properties，不需命中已知 profile |
 | `status` | 一次高度、單位、限位、錯誤及樣本時間 |
 | `watch --seconds 10` | 每 0.5 秒顯示狀態，最長 3600 秒 |
-| `up/down --seconds 1` | 每 100 ms 重送方向指令（真桌上每次寫入要等約 0.27 秒的回應，實際間隔約 0.27 秒）；時間上限 30 秒，結束送 stop |
+| `up/down --seconds 1` | 每 100 ms 重送方向指令（間隔從上一次寫入完成起算；真桌上每次寫入要等 0.17–0.26 秒的回應，所以實際間隔是 0.27–0.36 秒）；時間上限 30 秒，結束送 stop |
 | `goto 105 --unit cm --timeout 20` | 送一次毫米目標，等待通知進入容差後送 stop；逾時上限 120 秒 |
 | `stop` | 連線與 profile 探索後立即送 stop；裝置有登入 service 時再送登入與第二次 stop，不等待通知或初始化查詢 |
 
