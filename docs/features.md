@@ -25,16 +25,16 @@ ID 保留供測試與實作對照。以下是原 App 的證據，不能直接視
 | F-CTL-03 | M 與坐／站／午睡記憶捷徑 | C：M 開單選儲存對話框；記憶存在本機、單位 inch；坐必須低於已存站高 | 有真桌時核對儲存／移動與限位；目前 Android 模擬版仍用長按儲存，屬待修正差異 |
 | F-NAV-01 | 控制／歷史／設定主分頁 | R、S：原 App 為三個主區域 | 替代 App 額外提供提醒分頁，屬自己的導覽選擇 |
 | F-HIS-01 | 日／週／月／年歷史 | R：[每日畫面](runtime-assets/history-day.png)；S、C 有期間處理 | 原 App 每種期間 runtime 跨日／時區測試 |
-| F-HIS-02 | 每日站立目標 | R：[設定頁](runtime-assets/reminder-goal.png)；C：初始值 0，快捷 40/60/120/180/240 分鐘 | 真實達標通知；替代 App 預設值差異仍需處理 |
-| F-HIS-03 | 目標完成率 | C：站立秒數先取整分鐘，再整數百分比、最高 100；零活動有特殊分支 | 原 App 零活動顯示與實機累計對照 |
+| F-HIS-02 | 每日站立目標 | R：[設定頁](runtime-assets/reminder-goal.png)；C：初始值 0，快捷 40/60/120/180/240 分鐘 | 真實達標通知；替代 App 預設 0 與快捷已對齊 |
+| F-HIS-03 | 目標完成率 | C：站立秒數先取整分鐘，再整數百分比、最高 100；零活動有特殊分支 | 實機累計對照；替代 App 採相同整數算法，但零活動顯示 0%、目標 0 顯示未設定（刻意差異） |
 | F-HIS-04 | 距離目標剩餘時間 | R、S、C | 背景與斷線下時間來源／準確性 |
-| F-HIS-05 | 熱量估算與雞腿換算 | C：`long(seconds * (kg * 1.5 + 60) / 3600)`；週／月逐日截斷加總，年逐月；雞腿為 kcal/200 | 生理準確性不在相容性驗收內；真實活動資料尚未驗證 |
-| F-REM-01 | 每日站立目標時間設定 | R、C：時／分控制；小時 0–24、分鐘以 10 為步幅；初始 0 | 邊界操作 runtime 對照，原 App 可表示 24:50 的特殊行為 |
+| F-HIS-05 | 熱量估算與雞腿換算 | C：`long(seconds * (kg * 1.5 + 60) / 3600)`；週／月逐日截斷加總，年逐月；雞腿為 kcal/200 | 生理準確性不在相容性驗收內；真實活動資料尚未驗證；替代 App 已顯示雞腿數 |
+| F-REM-01 | 每日站立目標時間設定 | R、C：時／分控制；小時 0–24、分鐘以 10 為步幅；初始 0 | 邊界操作 runtime 對照；替代 App 支援 0–24:50、10 分鐘單位，但仍用數字欄位而非時／分選擇器 |
 | F-REM-02 | 久坐提醒 | R：[久坐頁](runtime-assets/reminder-sitting.png)；C：時間、啟用開關、獨立鈴聲開關／選取 | 實際觸發、背景、鎖屏、鈴聲播放與取消 |
 | F-REM-03 | 久站提醒 | R：[久站頁](runtime-assets/reminder-standing.png)；C：對應時間／開關／鈴聲 | 同上；站立判斷與記憶／提醒設定耦合詳見 REA |
-| F-REM-04 | 快捷時間 | R、C：目標 40m/1h/2h/3h/4h；坐站提醒 40m/1h/2h | 已知選項；完整選取／保存對照仍待測 |
+| F-REM-04 | 快捷時間 | R、C：目標 40m/1h/2h/3h/4h；坐站提醒 40m/1h/2h | 替代 App 已有相同快捷（只填入欄位，須儲存）；原 App 完整選取／保存對照仍待測 |
 | F-SET-01 | 健康提醒入口 | R：[設定選單](runtime-assets/settings-menu.png) → 三類提醒 | 替代 App 尚未補齊鈴聲等細節 |
-| F-SET-02 | 桌子／個人設定 | R：[桌子設定](runtime-assets/desk-settings.png)；C：身高、體重、坐／站／午睡高度、推薦高度填入；初始空白；kg/lb 保存 | 推薦值與硬體上下限、原 App lb 小數處理風險；替代 App 尚未完整相容 |
+| F-SET-02 | 桌子／個人設定 | R：[桌子設定](runtime-assets/desk-settings.png)；C：身高、體重、坐／站／午睡高度、推薦高度填入；初始空白；kg/lb 保存 | 推薦值與硬體上下限、原 App lb 小數處理風險；替代 App 身高體重已改為初始空白，其餘尚未完整相容 |
 | F-SET-03 | 度量單位 | R：[cm/in 選項](runtime-assets/measurement-unit.png)；C：改 App 顯示 preference，不送硬體單位命令 | 真桌顯示與單位切換對照 |
 | F-SET-04 | 異常維護入口 | R：[該次畫面為空白 WebView](runtime-assets/maintenance-menu.png) | 尚未確認預期網頁內容與空白原因，不能稱已驗證維修功能 |
 | F-SET-05 | 新手教學 | R：[1](runtime-assets/onboarding-1.png)、[2](runtime-assets/onboarding-2.png)、[3](runtime-assets/onboarding-3.png)；設定另有入口 | 教學後續／重播完整流程 |

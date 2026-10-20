@@ -25,6 +25,7 @@ public class LocaleAppearanceTest {
     @Before public void launch() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.getSharedPreferences("appearance", 0).edit().clear().commit();
+        context.getSharedPreferences("simulator", 0).edit().clear().commit();
         context.getSharedPreferences("desk", 0).edit().clear().putString("weightKg", "75.5").putString("goal", "120").putString("preset0", "900").commit();
         if (Build.VERSION.SDK_INT >= 33) InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context.getPackageName(), android.Manifest.permission.POST_NOTIFICATIONS);
         scenario = ActivityScenario.launch(MainActivity.class);

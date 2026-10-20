@@ -23,15 +23,17 @@
 | S07 | 模擬鎖／故障 | 移動中鎖定或注入碰撞，再送命令 | 立即停止、拒絕新移動；清除／解鎖後可繼續 | `collisionAndLockStopAndBlockMovement`、`lockCollisionAndRecovery` |
 | S08 | F-CTL-03（目前模擬手勢） | 長按記憶目前高度，重新建立 session | 只有已連線且停止時可存；3 槽保留；裝置不自動重連 | `presetsRequireStationaryConnectionAndPersist` |
 | S09 | 生命週期 | 移動中進入背景再返回 | 停止且不自動恢復 | `pauseStopsMotorAndNeverAutoResumes`、`backgroundStopsMovingAndDoesNotResume` |
-| S10 | F-SET-03、資料 | 修改身高、體重、門檻及英吋，重建 Activity | 資料保留；72 cm 顯示 28.3 in；無效／NaN 被拒 | `profileUnitsAndValidation`、`profileAndUnitsSurviveActivityRecreation` |
-| S11 | F-HIS-03/05 | 離線、連線坐姿、連線站姿各推進時間 | 只累計連線且達門檻的前景站立時間；熱量符合已標示公式 | `statisticsOnlyCountConnectedStandingTime`、`thresholdCrossingDoesNotCountWholeMovementAsStanding` |
+| S09b | 生命週期、模擬桌 | 移動後重建 Activity、重開 App；移動中重建 | 恢復停止位置；未連線、不續跑；不合法位置回到 72 cm | `simulatorRestoresOnlyAStoppedDisconnectedPosition`、`simulatedHeightSurvivesRecreationAndRelaunchWithoutResumingMotion` |
+| S10 | F-SET-02/03、資料 | 新資料檢查身高體重；修改身高、體重、門檻及英吋，重建 Activity；載入舊版資料 | 初始空白、無體重熱量 0；資料保留；72 cm 顯示 28.3 in；無效／NaN 被拒；舊版 170／65 保留 | `profileUnitsAndValidation`、`newProfileIsEmptyAndCaloriesStayZeroWithoutWeight`、`legacyStoredDefaultsAreKept`、`profileStartsEmptyAndSurvivesActivityRecreation` |
+| S11 | F-HIS-03/05 | 離線、連線坐姿、連線站姿各推進時間 | 只累計連線且達門檻的前景站立時間；熱量符合已標示公式 | `statisticsOnlyCountConnectedStandingTime`、`thresholdCrossingDoesNotCountWholeMovementAsStanding`、`drumsticksAreKcalOver200WithOneDecimal` |
 | S12 | F-HIS-01 | 跨午夜、週一、月底與年底累計 | 日期正確拆分；週一開始；本期不包含前期 | `midnightSplitsBucketsAndYearDoesNotLeak`、`weekStartsMondayAndMonthExcludesOldDays` |
 | S13 | F-HIS-01 | 美東 DST 春季切換日 | 實際 23 小時，不假定每日固定 24 小時 | `dstDayUsesActualElapsedTime` |
-| S14 | F-HIS-02/04、F-REM-01 | 修改目標，累計到達目標；切換期間 | 目標保存、剩餘時間不為負、達標提醒一次 | `standingGoalAndReminderPersistAndCanBeDisabled`、`reminderGoalsAndHistoryNavigation` |
-| S15 | F-REM-02/03 | 設 1 分鐘，未達先暫停，再恢復；切換坐站姿勢 | 連續計時重設；達門檻僅提醒一次；0 可停用 | `sittingReminderFiresOnceAndPauseResetsContinuousTime`、`standingReminderResetsWhenPostureChanges` |
-| S16 | 額外倒數 | 開始、替換、重建、逾期、取消 | 使用持久化截止時間；取消不再到期；不移動桌子 | `countdownDeadlineSurvivesRestoreAndFiresOnlyOnce`、`cancelAndRestartReplaceDeadline`、`countdownStartsRestoresAndCancels`、`expiredCountdownIsReconciledAfterRelaunch` |
+| S14 | F-HIS-02/03/04、F-REM-01/04 | 預設值、0／24:00／24:50／超界、舊版非整十值；不足一分鐘、整分鐘交界、剛達標、超標；快捷填入後儲存；切換期間 | 預設 0、目標 0 顯示未設定且不提醒；範圍 0–1490、新選擇 10 分鐘單位、舊值保留；完成率整數且最高 100；快捷不自動儲存；達標提醒一次 | `goalsAndRemindersDefaultToZeroAndAcceptTheOriginalRange`、`legacyOffStepValueIsKeptButNewChoicesUseTenMinuteSteps`、`goalPercentUsesTheOriginalIntegerRule`、`zeroGoalNeverRaisesTheGoalAlert`、`standingGoalAndReminderPersistAndCanBeDisabled`、`reminderGoalsShortcutsAndHistoryNavigation` |
+| S15 | F-REM-02/03 | 設 10 分鐘，未達先暫停，再恢復；切換坐站姿勢 | 連續計時重設；達門檻僅提醒一次；0 可停用 | `sittingReminderFiresOnceAndPauseResetsContinuousTime`、`standingReminderResetsWhenPostureChanges` |
+| S16 | 額外倒數 | 開始、替換、重建、逾期、取消；alarm 遺失（模擬重開機）後開 App、重複 resume、已到期才開 App、取消後重開 | 使用持久化截止時間；未到期就重新排程；已到期只顯示、清除排程、不補發通知；取消不再到期；不移動桌子 | `countdownDeadlineSurvivesRestoreAndFiresOnlyOnce`、`cancelAndRestartReplaceDeadline`、`countdownStartsRestoresAndCancels`、`pendingCountdownIsRearmedOnOpenAfterItsAlarmWasLost`、`expiredCountdownIsShownAsDueWithoutALateNotification` |
 | S17 | F-REM-02/03 通知通路 | 已授權通知，執行 receiver，再取消 | App 通知存在，取消後移除 | `receiverPostsNotificationAndCancellationRemovesIt`；此案例不證明 OS alarm 準時 |
 | S18 | 資料恢復 | 損壞部分偏好與日期資料，重新載入 | 逐欄回復，保留合法欄位；不崩潰 | `corruptPreferencesRecoverWithoutDiscardingValidFields`、`persistenceAndClear` |
+| S19 | F-SET-06 | 清除語言偏好後啟動 | App 預設為繁中，與裝置語言無關 | `defaultLanguageIsTraditionalChinese`；其餘流程測試改用 resource 比對，不寫死文案 |
 
 JVM 類別：`app/src/test/java/dev/cofodesk/auto/core/`。Android 類別：`app/src/androidTest/java/dev/cofodesk/auto/AppFlowTest.java` 與 `LocaleAppearanceTest.java`。
 

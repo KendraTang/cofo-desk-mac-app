@@ -15,6 +15,12 @@ public class StandingCaloriesTest {
         assertEquals(0, StandingCalories.estimate(60_000, Double.NaN));
         assertThrows(IllegalArgumentException.class, () -> StandingCalories.estimate(-1, 65));
     }
+    @Test public void drumsticksAreKcalOver200WithOneDecimal() {
+        assertEquals("0.0", StandingCalories.drumsticks(0));
+        assertEquals("0.8", StandingCalories.drumsticks(157));
+        assertEquals("0.3", StandingCalories.drumsticks(50));
+        assertEquals("2.0", StandingCalories.drumsticks(400));
+    }
     @Test public void historyUsesDailyRoundingForMonthAndMonthlyRoundingForYear() {
         java.time.ZoneId zone = java.time.ZoneId.of("Asia/Taipei");
         ActivityHistory history = new ActivityHistory(zone);

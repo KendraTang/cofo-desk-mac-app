@@ -10,4 +10,6 @@ public final class StandingCalories {
         if (!Double.isFinite(weightKg) || weightKg <= 0) return 0;
         return (long) ((standingMs / 1000L) * (weightKg * 1.5 + 60) / 3600.0);
     }
+    /** Original "equivalent" figure: kcal / 200, shown with one decimal. */
+    public static String drumsticks(long kcal) { return String.format(java.util.Locale.US, "%.1f", kcal / 200.0); }
 }

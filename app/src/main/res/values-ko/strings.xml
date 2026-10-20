@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="brand">DESK AUTO     /     내 작업 공간</string>
     <string name="nav_control">조작</string>
     <string name="nav_history">기록</string>
@@ -29,7 +29,7 @@
     <string name="calorie_note">원본 앱 1.0.10 추정식: 서 있던 초 × (체중 kg × 1.5 + 60) ÷ 3600, 소수점 버림. 주/월은 일별 값을, 연도는 월별 값을 합산합니다.</string>
     <string name="reminder_title">편안한 앉기·서기 리듬 찾기</string>
     <string name="goals">목표 및 알림</string>
-    <string name="goal_label">일일 서기 목표 (분)</string>
+    <string name="goal_label">일일 서기 목표 (분, 0 = 미설정)</string>
     <string name="sit_label">오래 앉기 알림 (분, 0 = 끄기)</string>
     <string name="stand_label">오래 서기 알림 (분, 0 = 끄기)</string>
     <string name="save_goals">목표 및 알림 저장</string>
@@ -39,7 +39,7 @@
     <string name="minutes_label">분 (1–180)</string>
     <string name="start_timer">카운트다운 시작</string>
     <string name="cancel_timer">알림 취소</string>
-    <string name="countdown_note">카운트다운은 알림만 보내며 자동으로 움직이지 않습니다. Android 절전으로 알림이 지연될 수 있습니다. 앱을 다시 열면 만료를 확인하며, 재부팅 후에는 다시 설정하세요.</string>
+    <string name="countdown_note">카운트다운은 알림만 보내며 자동으로 움직이지 않습니다. Android 절전으로 알림이 지연될 수 있습니다. 재부팅 후 앱을 열면 아직 만료되지 않은 카운트다운을 다시 예약합니다. 열 때 이미 만료됐다면 만료 상태만 표시하고 알림은 다시 보내지 않습니다.</string>
     <string name="settings_title">내 습관에 맞게 설정</string>
     <string name="profile">개인 정보</string>
     <string name="body_height">키 (cm)</string>
@@ -82,7 +82,9 @@
     <string name="timer_due">자세를 바꿀 시간입니다</string>
     <string name="timer_idle">진행 중인 카운트다운 없음</string>
     <string name="timer_remaining">남은 시간 %1$02d:%2$02d</string>
-    <string name="history_summary">이번 기간 서기  %1$.1f분\n예상 열량  %2$.1f kcal\n\n일일 목표  %3$d분\n달성  %4$.0f%% · 남은 시간 %5$.1f분</string>
+    <string name="goal_summary">일일 목표  %1$d분\n달성  %2$d%% · 남은 시간 %3$.1f분</string>
+    <string name="goal_unset">일일 목표  미설정</string>
+    <string name="history_summary" tools:ignore="PluralsCandidate">이번 기간 서기  %1$.1f분\n예상 열량  %2$d kcal (닭다리 약 %3$s개)</string>
     <string name="invalid_number">올바른 숫자를 입력하세요</string>
     <string name="notification_channel">앉기·서기 알림</string>
     <string name="notification_due">앉기·서기 알림 시간입니다</string>
@@ -114,7 +116,7 @@
     <string name="error_save_preset">연결하고 정지한 뒤 높이를 저장하세요</string>
     <string name="error_slot">잘못된 저장 위치입니다</string>
     <string name="error_profile">키 80–250 cm, 체중 20–300 kg, 서기 기준 63–128 cm로 입력하세요</string>
-    <string name="error_goals">목표는 1–480분, 알림은 0–240분입니다 (0 = 끄기)</string>
+    <string name="error_goals">목표와 알림은 0–1490분(24:50), 10분 단위입니다 (0 = 미설정/끄기)</string>
     <string name="error_reminder">카운트다운은 1–180분이어야 합니다</string>
     <string name="fault_collision">시뮬레이션 장애물: 정지</string>
     <string name="alert_standing">오래 서기 알림: 앉아서 쉬세요</string>

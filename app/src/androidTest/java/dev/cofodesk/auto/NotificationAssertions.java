@@ -23,4 +23,10 @@ final class NotificationAssertions {
         } while (SystemClock.elapsedRealtime() < deadline);
         throw new AssertionError("App notification was not removed within 3 seconds");
     }
+    /** Negative check: give the binder a moment, then require that nothing was posted. */
+    static void assertNotPosted(NotificationManager manager) {
+        SystemClock.sleep(500);
+        for (StatusBarNotification notification : manager.getActiveNotifications())
+            if (notification.getId() == ReminderReceiver.ID) throw new AssertionError("Unexpected app notification was posted");
+    }
 }

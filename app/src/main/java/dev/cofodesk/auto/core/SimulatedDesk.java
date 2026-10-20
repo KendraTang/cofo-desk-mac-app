@@ -30,6 +30,11 @@ public final class SimulatedDesk implements DeskPort {
         double step = Math.min(Math.abs(targetMm - heightMm), 35.0 * ms / 1000.0);
         heightMm += Math.signum(targetMm - heightMm) * step;
     }
+    /** Restores a saved stopped position only; connection, motion, lock and fault always start cleared. */
+    public void restore(int mm) {
+        if (connected) throw new IllegalStateException("error_restore_connected");
+        heightMm = targetMm = mm >= MIN_MM && mm <= MAX_MM ? mm : 720;
+    }
     public void collide() { stop(); fault = "fault_collision"; }
     public void clearFault() { fault = ""; }
 }

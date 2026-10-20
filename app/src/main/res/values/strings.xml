@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="brand">DESK AUTO     /     我的工作空間</string>
     <string name="nav_control">控制</string>
     <string name="nav_history">歷史</string>
@@ -29,7 +29,7 @@
     <string name="calorie_note">熱量依原 App 1.0.10 的公式：站立秒數 ×（體重 kg × 1.5 + 60）÷ 3600，取整數。週／月逐日加總，年逐月加總；僅為估算。</string>
     <string name="reminder_title">找到舒服的坐站節奏</string>
     <string name="goals">目標與提醒</string>
-    <string name="goal_label">每日站立目標（分鐘）</string>
+    <string name="goal_label">每日站立目標（分鐘，0 未設定）</string>
     <string name="sit_label">久坐提醒（分鐘，0 關閉）</string>
     <string name="stand_label">久站提醒（分鐘，0 關閉）</string>
     <string name="save_goals">儲存目標與提醒</string>
@@ -39,7 +39,7 @@
     <string name="minutes_label">分鐘（1–180）</string>
     <string name="start_timer">開始倒數</string>
     <string name="cancel_timer">取消提醒</string>
-    <string name="countdown_note">倒數到期僅通知，不會自動升降。背景通知可能因 Android 省電機制延後；重新開啟 App 會顯示到期狀態。重新開機後需重新設定倒數。</string>
+    <string name="countdown_note">倒數到期僅通知，不會自動升降。背景通知可能因 Android 省電機制延後。重新開機後，打開 App 會恢復尚未到期的倒數；開啟時已到期只會顯示到期狀態，不補發通知。</string>
     <string name="settings_title">依你的習慣設定</string>
     <string name="profile">個人資料</string>
     <string name="body_height">身高（cm）</string>
@@ -82,7 +82,9 @@
     <string name="timer_due">提醒時間到了，換個姿勢吧</string>
     <string name="timer_idle">沒有進行中的倒數</string>
     <string name="timer_remaining">剩餘 %1$02d:%2$02d</string>
-    <string name="history_summary">本期站立  %1$.1f 分鐘\n估計熱量  %2$.1f kcal\n\n今日目標  %3$d 分鐘\n已完成  %4$.0f%% · 尚餘 %5$.1f 分鐘</string>
+    <string name="goal_summary">今日目標  %1$d 分鐘\n已完成  %2$d%% · 尚餘 %3$.1f 分鐘</string>
+    <string name="goal_unset">今日目標  未設定</string>
+    <string name="history_summary" tools:ignore="PluralsCandidate">本期站立  %1$.1f 分鐘\n估計熱量  %2$d kcal（約 %3$s 隻雞腿）</string>
     <string name="invalid_number">請輸入完整有效的數字</string>
     <string name="notification_channel">坐站提醒</string>
     <string name="notification_due">坐站提醒時間到了</string>
@@ -114,7 +116,7 @@
     <string name="error_save_preset">請在已連線且停止時儲存</string>
     <string name="error_slot">無效的記憶位置</string>
     <string name="error_profile">身高 80–250 cm、體重 20–300 kg、站立門檻 63–128 cm</string>
-    <string name="error_goals">目標 1–480 分鐘，提醒 0–240 分鐘（0 為關閉）</string>
+    <string name="error_goals">目標與提醒須為 0–1490 分鐘（24:50），以 10 分鐘為單位；0 表示未設定或關閉</string>
     <string name="error_reminder">提醒時間須介於 1–180 分鐘</string>
     <string name="fault_collision">模擬障礙物：已停止</string>
     <string name="alert_standing">久站提醒：可以坐下休息一下</string>

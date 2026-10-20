@@ -34,4 +34,15 @@
     <item name="dark_mode" type="id" />
     <item name="app_root" type="id" />
     <item name="history_summary" type="id" />
+    <item name="goal_40" type="id" />
+    <item name="goal_60" type="id" />
+    <item name="goal_120" type="id" />
+    <item name="goal_180" type="id" />
+    <item name="goal_240" type="id" />
+    <item name="sit_40" type="id" />
+    <item name="sit_60" type="id" />
+    <item name="sit_120" type="id" />
+    <item name="stand_40" type="id" />
+    <item name="stand_60" type="id" />
+    <item name="stand_120" type="id" />
 </resources>

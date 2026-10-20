@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="brand">DESK AUTO     /     My workspace</string>
     <string name="nav_control">Control</string>
     <string name="nav_history">History</string>
@@ -29,7 +29,7 @@
     <string name="calorie_note">Estimate from app 1.0.10: standing seconds × (weight kg × 1.5 + 60) ÷ 3600, truncated. Week/month sum daily values; year sums monthly values.</string>
     <string name="reminder_title">Find your sit–stand rhythm</string>
     <string name="goals">Goals and reminders</string>
-    <string name="goal_label">Daily standing goal (minutes)</string>
+    <string name="goal_label">Daily standing goal (minutes, 0 = not set)</string>
     <string name="sit_label">Sitting reminder (minutes, 0 = off)</string>
     <string name="stand_label">Standing reminder (minutes, 0 = off)</string>
     <string name="save_goals">Save goals and reminders</string>
@@ -39,7 +39,7 @@
     <string name="minutes_label">Minutes (1–180)</string>
     <string name="start_timer">Start countdown</string>
     <string name="cancel_timer">Cancel reminder</string>
-    <string name="countdown_note">Countdowns only notify. Android power saving may delay background delivery. Reopening shows expiry; set a new countdown after reboot.</string>
+    <string name="countdown_note">Countdowns only notify. Android power saving may delay background delivery. After a reboot, opening the app restores a countdown that has not expired; an expired one is shown as due without a late notification.</string>
     <string name="settings_title">Make it yours</string>
     <string name="profile">Personal profile</string>
     <string name="body_height">Height (cm)</string>
@@ -82,7 +82,9 @@
     <string name="timer_due">Time to change your posture</string>
     <string name="timer_idle">No countdown running</string>
     <string name="timer_remaining">Remaining %1$02d:%2$02d</string>
-    <string name="history_summary">Standing this period  %1$.1f min\nEstimated calories  %2$.1f kcal\n\nDaily goal  %3$d min\nCompleted  %4$.0f%% · %5$.1f min remaining</string>
+    <string name="goal_summary">Daily goal  %1$d min\nCompleted  %2$d%% · %3$.1f min remaining</string>
+    <string name="goal_unset">Daily goal  not set</string>
+    <string name="history_summary" tools:ignore="PluralsCandidate">Standing this period  %1$.1f min\nEstimated calories  %2$d kcal (≈ %3$s drumsticks)</string>
     <string name="invalid_number">Enter a valid number</string>
     <string name="notification_channel">Sit–stand reminders</string>
     <string name="notification_due">Time for your sit–stand reminder</string>
@@ -114,7 +116,7 @@
     <string name="error_save_preset">Connect and stop before saving a height</string>
     <string name="error_slot">Invalid memory slot</string>
     <string name="error_profile">Height: 80–250 cm; weight: 20–300 kg; standing threshold: 63–128 cm</string>
-    <string name="error_goals">Goal: 1–480 min; reminders: 0–240 min (0 = off)</string>
+    <string name="error_goals">Goal and reminders: 0–1490 min (24:50) in 10-minute steps; 0 = not set / off</string>
     <string name="error_reminder">Countdown must be 1–180 minutes</string>
     <string name="fault_collision">Simulated obstacle: stopped</string>
     <string name="alert_standing">Standing reminder: take a seated break</string>

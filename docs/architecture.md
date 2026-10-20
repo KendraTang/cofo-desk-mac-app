@@ -14,7 +14,7 @@
 | `core/SimulatedDesk` | 可重現的桌子：63–128 cm、35 mm/s、碰撞停止與連線中斷 | JVM 測試；數值參考 Premium 規格，故障行為為測試模型 |
 | `core/DeskSession` | 記憶高度、資料驗證、單位、前景坐站統計、目標與提醒 | JVM 測試、持久化 round trip、邊界案例 |
 | `core/ActivityHistory` | 依本機日曆分桶，日／週／月／年彙總 | 跨日、跨年、週一、DST 測試 |
-| `SessionStore` | 私有 SharedPreferences；損壞欄位各自回復預設值 | Activity recreation、JVM 損壞資料案例 |
+| `SessionStore` | 私有 SharedPreferences；損壞欄位各自回復預設值。模擬桌停止位置另存在 `simulator` 偏好 | Activity recreation、App 重開、JVM 損壞資料案例 |
 | `MainActivity` | 四個分頁、可捲動畫面、操作與生命週期 | Espresso 操作測試與模擬器截圖 |
 | `ReminderReceiver` | Android 通知與一次性 inexact alarm | 倒數測試及模擬器權限／通知測試 |
 | `BleInspector` | 有限時掃描、明確選擇裝置、列出 GATT service/characteristic UUID 和 properties | Android 權限及未找到裝置情境；真桌 GATT 待驗證 |
@@ -27,11 +27,16 @@ BLE 診斷沒有 characteristic/descriptor 寫入 API。另有 REA 證據支持�
 - 記憶高度預設 72、105、118 cm；點按移動，長按儲存。原 App 的 M／姿勢捷徑語意尚未實測。
 - 切換分頁、進入背景、鎖定、碰撞和中斷連線都停止模擬馬達。重新連線／返回前景不續跑舊指令。
 - 模擬碰撞會停止並阻止新移動，直到手動清除。真桌硬體的下降碰撞回退行為另見官方手冊，尚未在這裡重現或控制。
-- 站立門檻預設 95 cm，目標 60 分鐘，久坐提醒 40 分鐘，久站提醒 60 分鐘。這些預設值不是原 App 規格。
+- 站立門檻預設 95 cm，這是本專案的定義，不是原 App 規格。
+- 每日目標、久坐提醒、久站提醒的新資料預設都是 0，與原 App 初始值一致；0 表示目標未設定或提醒關閉。範圍是 0–1490 分鐘（原 App 時／分選擇器可表示的 24:50），新的選擇以 10 分鐘為單位；舊版已存的非整十值會保留，不強制取整。原 App 另有提醒啟用開關與鈴聲開關，替代 App 以 0 表示關閉，鈴聲尚未實作，相容性另行追蹤。
+- 目標旁有 40／60／120／180／240 分鐘快捷，久坐與久站各有 40／60／120 分鐘快捷，與原 App 相同；快捷只填入欄位，仍須按儲存。
+- 身高、體重的新資料是空白，與原 App 相同；沒有體重時熱量顯示 0。舊版已保存的值（包含當時的預設 170 cm／65 kg）會保留，因為舊格式無法分辨是否為使用者輸入。
+- 每日目標完成率採原 App 整數算法：`min(100, (站立秒數 / 60) × 100 / 目標分鐘)`。兩項刻意差異：沒有活動時顯示 0%（原 App 特殊分支顯示 100%）；目標為 0 時顯示「未設定」，不做除法，也不觸發達標提醒。
 - 只在前景且桌子已連線時累計。背景和斷線時高度不可觀察，因此不推算活動；背景會重設連續姿勢提醒。
 - 歷史採本機時區、週一為一週起點；日／週／月／年顯示本期截至今天。時區切換不重新分配已存日期。
-- 熱量依 REA 取得的原 App 1.0.10 公式：站立整秒 ×（目前體重 kg × 1.5 + 60）÷ 3600 後截斷；週／月逐日、年逐月加總。支援 canonical 小數 kg，避免原 App lb 字串被 Integer.parseInt 處理的風險；不聲稱生理準確性。
-- 一次性倒數依 wall clock 儲存截止時間，背景通知採 Android inexact alarm，省電時可能延後。程序重啟可復原截止時間；手機重啟不重設 OS alarm，開 App 仍會核對是否到期。
+- 熱量依 REA 取得的原 App 1.0.10 公式：站立整秒 ×（目前體重 kg × 1.5 + 60）÷ 3600 後截斷；週／月逐日、年逐月加總。支援 canonical 小數 kg，避免原 App lb 字串被 Integer.parseInt 處理的風險；不聲稱生理準確性。雞腿數與原 App 相同，為該期間熱量 ÷ 200，取一位小數。
+- 一次性倒數依 wall clock 儲存截止時間，背景通知採 Android inexact alarm，省電時可能延後。每次 App 回到前景時，若截止時間還沒到，就用同一個 PendingIntent 重新排程，因此手機重開機後，只要開一次 App 就會恢復提醒；沒有 `BOOT_COMPLETED` receiver，開 App 之前不會恢復。若開 App 時已經到期，只顯示到期狀態並清除排程，不補發通知，避免送出過時或重複的提醒。force-stop 期間 Android 會取消 alarm，App 不承諾照常通知。
+- 模擬桌的停止位置以整數 mm 保存；Activity 重建（旋轉、切換語言或外觀）與 App 重開都會恢復。保存前先停止模擬運動；恢復後一律是未連線、不移動，不恢復舊指令、鎖定或故障；資料不合法時回到 72 cm。這只用於模擬桌，真桌高度一律以裝置回報為準。
 - 不保存模擬桌連線、正在執行的指令或硬體故障；App 再次啟動須明確連線。
 
 ## 下一個實作關卡
@@ -43,4 +48,4 @@ BLE 診斷沒有 characteristic/descriptor 寫入 API。另有 REA 證據支持�
 
 ## 語言與外觀
 
-文字、錯誤碼、BLE 診斷和通知已使用 Android resources，提供繁中／英文／日文／簡中／韓文。`UiPreferences` 將語言與跟隨系統／淺色／深色保存在獨立 appearance preferences；不被 session 儲存覆蓋，不改裝置語言或系統主題。切換會停止模擬馬達並重建 Activity。App Bundle 關閉 language split，使所有內建語言離線可用。
+文字、錯誤碼、BLE 診斷和通知已使用 Android resources，提供繁中／英文／日文／簡中／韓文。`UiPreferences` 將語言與跟隨系統／淺色／深色保存在獨立 appearance preferences；不被 session 儲存覆蓋，不改裝置語言或系統主題。切換會停止模擬馬達並重建 Activity，模擬桌停止位置會保留。App Bundle 關閉 language split，使所有內建語言離線可用。

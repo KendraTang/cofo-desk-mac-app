@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="brand">DESK AUTO     /     マイワークスペース</string>
     <string name="nav_control">操作</string>
     <string name="nav_history">履歴</string>
@@ -29,7 +29,7 @@
     <string name="calorie_note">元のアプリ1.0.10の概算式：立位秒数 ×（体重kg × 1.5 + 60）÷ 3600、小数切捨て。週・月は日ごと、年は月ごとに合計。</string>
     <string name="reminder_title">自分に合う座る・立つリズム</string>
     <string name="goals">目標とリマインダー</string>
-    <string name="goal_label">1日の立位目標（分）</string>
+    <string name="goal_label">1日の立位目標（分、0で未設定）</string>
     <string name="sit_label">座りすぎ通知（分、0でオフ）</string>
     <string name="stand_label">立ちすぎ通知（分、0でオフ）</string>
     <string name="save_goals">目標とリマインダーを保存</string>
@@ -39,7 +39,7 @@
     <string name="minutes_label">分（1–180）</string>
     <string name="start_timer">開始</string>
     <string name="cancel_timer">通知をキャンセル</string>
-    <string name="countdown_note">通知のみでデスクは自動移動しません。省電力により通知が遅れる場合があります。再表示時に期限を確認。端末再起動後は再設定してください。</string>
+    <string name="countdown_note">通知のみでデスクは自動移動しません。省電力により通知が遅れる場合があります。端末再起動後はアプリを開くと期限前のカウントダウンを再開します。開いた時点で期限切れなら表示のみで、通知は再送しません。</string>
     <string name="settings_title">自分に合う設定に</string>
     <string name="profile">プロフィール</string>
     <string name="body_height">身長（cm）</string>
@@ -82,7 +82,9 @@
     <string name="timer_due">姿勢を変える時間です</string>
     <string name="timer_idle">実行中のタイマーはありません</string>
     <string name="timer_remaining">残り %1$02d:%2$02d</string>
-    <string name="history_summary">今期の立位  %1$.1f 分\n推定カロリー  %2$.1f kcal\n\n今日の目標  %3$d 分\n達成率  %4$.0f%% · 残り %5$.1f 分</string>
+    <string name="goal_summary">今日の目標  %1$d 分\n達成率  %2$d%% · 残り %3$.1f 分</string>
+    <string name="goal_unset">今日の目標  未設定</string>
+    <string name="history_summary" tools:ignore="PluralsCandidate">今期の立位  %1$.1f 分\n推定カロリー  %2$d kcal（鶏もも約 %3$s 本）</string>
     <string name="invalid_number">有効な数値を入力してください</string>
     <string name="notification_channel">座る・立つリマインダー</string>
     <string name="notification_due">座る・立つリマインダーの時間です</string>
@@ -114,7 +116,7 @@
     <string name="error_save_preset">接続して停止してから高さを保存してください</string>
     <string name="error_slot">無効なメモリー番号です</string>
     <string name="error_profile">身長80–250 cm、体重20–300 kg、立位基準63–128 cmで入力してください</string>
-    <string name="error_goals">目標1–480分、通知0–240分（0でオフ）で指定してください</string>
+    <string name="error_goals">目標と通知は0–1490分（24:50）、10分単位で指定してください（0で未設定・オフ）</string>
     <string name="error_reminder">タイマーは1–180分で指定してください</string>
     <string name="fault_collision">模擬障害物：停止しました</string>
     <string name="alert_standing">立ちすぎ通知：座って休憩しましょう</string>

@@ -26,7 +26,16 @@ public final class ReminderReceiver extends BroadcastReceiver {
         context.getSystemService(AlarmManager.class).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pending(context));
     }
     static void cancel(Context context) {
-        context.getSystemService(AlarmManager.class).cancel(pending(context));
+        cancelAlarm(context);
         context.getSystemService(NotificationManager.class).cancel(ID);
+    }
+    /** Also drops the PendingIntent, so {@link #scheduled} reflects whether an alarm is armed. */
+    static void cancelAlarm(Context context) {
+        PendingIntent pending = pending(context);
+        context.getSystemService(AlarmManager.class).cancel(pending);
+        pending.cancel();
+    }
+    static boolean scheduled(Context context) {
+        return PendingIntent.getBroadcast(context, 0, new Intent(context, ReminderReceiver.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE) != null;
     }
 }

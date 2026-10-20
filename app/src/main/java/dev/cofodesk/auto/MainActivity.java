@@ -13,6 +13,8 @@ import android.widget.*;
 import dev.cofodesk.auto.core.*;
 import java.time.LocalDate;
 import java.util.Locale;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
 
 /** Native Android front end. All motor state comes from the selected DeskPort. */
 public final class MainActivity extends Activity {
@@ -54,7 +56,7 @@ public final class MainActivity extends Activity {
         BUTTON = dark ? 0xff263a58 : 0xffedf3fd;
         LINE = dark ? 0xff36465e : 0xffe0e7f2;
         LEG = dark ? 0xff91a6c5 : 0xff869ec4;
-        store = new SessionStore(this); store.load(session);
+        store = new SessionStore(this); store.load(session); store.loadSimulator(simulator);
         inspector = new BleInspector(this, () -> runOnUiThread(this::refreshDevices));
         if (saved != null) page = saved.getInt("page", 0);
         build();
@@ -63,10 +65,12 @@ public final class MainActivity extends Activity {
     private String s(int resource, Object... values) { return getString(resource, values); }
     @Override protected void onResume() {
         super.onResume(); session.reconcileReminder(System.currentTimeMillis());
+        // Alarms do not survive a reboot; re-arm a pending deadline. An expired one only updates the UI.
+        if (session.reminderAtMs() > 0) ReminderReceiver.schedule(this, session.reminderAtMs()); else ReminderReceiver.cancelAlarm(this);
         lastTick = SystemClock.elapsedRealtime(); handler.post(tick);
     }
     @Override protected void onPause() {
-        handler.removeCallbacks(tick); session.pause(); store.save(session); inspector.close();
+        handler.removeCallbacks(tick); session.pause(); store.save(session); store.saveSimulator(simulator); inspector.close();
         super.onPause();
     }
     @Override protected void onDestroy() { handler.removeCallbacksAndMessages(null); inspector.close(); super.onDestroy(); }
@@ -193,6 +197,7 @@ public final class MainActivity extends Activity {
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i); long minutes = session.history().day(date) / 60_000;
             bars.addView(text(s(R.string.daily_minutes, date.toString(), minutes), 13, MUTED));
+            if (session.dailyGoalMinutes() == 0) continue;
             ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal); progress.setMax(session.dailyGoalMinutes()); progress.setProgress((int) Math.min(minutes, session.dailyGoalMinutes())); bars.addView(progress);
         }
         note(s(R.string.calorie_note));
@@ -205,13 +210,11 @@ public final class MainActivity extends Activity {
         title(s(R.string.reminder_title));
         LinearLayout goals = card(s(R.string.goals));
         EditText goal = field(goals, s(R.string.goal_label), "" + session.dailyGoalMinutes(), R.id.goal, false);
-        LinearLayout shortcuts = new LinearLayout(this); goals.addView(shortcuts);
-        for (int value : new int[]{40, 60, 120, 180, 240}) {
-            Button b = new Button(this); b.setText(value == 40 ? "40m" : value / 60 + "h"); b.setTextSize(12); b.setPadding(0, 0, 0, 0); styleButton(b);
-            b.setOnClickListener(v -> goal.setText(String.valueOf(value))); shortcuts.addView(b, new LinearLayout.LayoutParams(0, dp(48), 1));
-        }
+        shortcuts(goals, goal, new int[]{40, 60, 120, 180, 240}, new int[]{R.id.goal_40, R.id.goal_60, R.id.goal_120, R.id.goal_180, R.id.goal_240});
         EditText sit = field(goals, s(R.string.sit_label), "" + session.sittingReminderMinutes(), R.id.sit_minutes, false);
+        shortcuts(goals, sit, new int[]{40, 60, 120}, new int[]{R.id.sit_40, R.id.sit_60, R.id.sit_120});
         EditText stand = field(goals, s(R.string.stand_label), "" + session.standingReminderMinutes(), R.id.stand_minutes, false);
+        shortcuts(goals, stand, new int[]{40, 60, 120}, new int[]{R.id.stand_40, R.id.stand_60, R.id.stand_120});
         button(goals, s(R.string.save_goals), R.id.save_goals, () -> { session.configureGoals(Integer.parseInt(goal.getText().toString()), Integer.parseInt(sit.getText().toString()), Integer.parseInt(stand.getText().toString())); Toast.makeText(this, s(R.string.goals_saved), Toast.LENGTH_SHORT).show(); });
         note(s(R.string.posture_note));
         LinearLayout timer = card(s(R.string.countdown));
@@ -226,15 +229,33 @@ public final class MainActivity extends Activity {
         button(timer, s(R.string.cancel_timer), R.id.cancel_timer, () -> { session.cancelReminder(); ReminderReceiver.cancel(this); });
         note(s(R.string.countdown_note));
     }
+    /** Shortcuts only fill the field; the user still saves explicitly. */
+    private void shortcuts(LinearLayout parent, EditText target, int[] minutes, int[] ids) {
+        LinearLayout row = new LinearLayout(this); parent.addView(row);
+        for (int i = 0; i < minutes.length; i++) {
+            int value = minutes[i];
+            Button b = new Button(this); b.setId(ids[i]); b.setText(value % 60 == 0 ? value / 60 + "h" : value + "m"); b.setTextSize(12); b.setPadding(0, 0, 0, 0); styleButton(b);
+            b.setOnClickListener(v -> target.setText(String.valueOf(value))); row.addView(b, new LinearLayout.LayoutParams(0, dp(48), 1));
+        }
+    }
+    private static OptionalInt optionalInt(EditText field) {
+        String value = field.getText().toString().trim();
+        return value.isEmpty() ? OptionalInt.empty() : OptionalInt.of(Integer.parseInt(value));
+    }
+    private static OptionalDouble optionalDouble(EditText field) {
+        String value = field.getText().toString().trim();
+        return value.isEmpty() ? OptionalDouble.empty() : OptionalDouble.of(Double.parseDouble(value));
+    }
     private void settingsPage() {
         title(s(R.string.settings_title));
         LinearLayout profile = card(s(R.string.profile));
-        EditText h = field(profile, s(R.string.body_height), "" + session.bodyHeightCm(), R.id.profile_height, false);
-        EditText w = field(profile, s(R.string.weight), "" + session.weightKg(), R.id.profile_weight, true);
+        OptionalInt bodyHeight = session.bodyHeightCm(); OptionalDouble weight = session.weightKg();
+        EditText h = field(profile, s(R.string.body_height), bodyHeight.isPresent() ? "" + bodyHeight.getAsInt() : "", R.id.profile_height, false);
+        EditText w = field(profile, s(R.string.weight), weight.isPresent() ? "" + weight.getAsDouble() : "", R.id.profile_weight, true);
         EditText threshold = field(profile, s(R.string.threshold), "" + session.standingThresholdMm() / 10.0, R.id.profile_threshold, true);
         Switch units = new Switch(this); units.setId(R.id.units); units.setText(s(R.string.use_inches)); units.setChecked(session.inches()); units.setPadding(0, dp(12), 0, dp(12)); profile.addView(units);
         button(profile, s(R.string.save_profile), R.id.save_profile, () -> {
-            session.setProfile(Integer.parseInt(h.getText().toString()), Double.parseDouble(w.getText().toString()), (int) Math.round(Double.parseDouble(threshold.getText().toString()) * 10), units.isChecked());
+            session.setProfile(optionalInt(h), optionalDouble(w), (int) Math.round(Double.parseDouble(threshold.getText().toString()) * 10), units.isChecked());
             Toast.makeText(this, s(R.string.profile_saved), Toast.LENGTH_SHORT).show();
         });
         LinearLayout appearance = card(s(R.string.appearance));
@@ -291,8 +312,12 @@ public final class MainActivity extends Activity {
         }
         if (historySummary != null) {
             long now = System.currentTimeMillis(), ms = session.history().total(period, now), today = session.history().total(ActivityHistory.Period.DAY, now);
-            double goalMs = session.dailyGoalMinutes() * 60_000.0;
-            historySummary.setText(s(R.string.history_summary, ms / 60000.0, (double) session.history().estimatedCalories(period, now, session.weightKg()), session.dailyGoalMinutes(), Math.min(100, today / goalMs * 100), Math.max(0, goalMs - today) / 60000));
+            long kcal = session.history().estimatedCalories(period, now, session.weightKg().orElse(0));
+            OptionalInt percent = session.goalPercent(now);
+            String goal = percent.isPresent()
+                    ? s(R.string.goal_summary, session.dailyGoalMinutes(), percent.getAsInt(), Math.max(0, session.dailyGoalMinutes() * 60_000.0 - today) / 60000)
+                    : s(R.string.goal_unset);
+            historySummary.setText(s(R.string.history_summary, ms / 60000.0, kcal, StandingCalories.drumsticks(kcal)) + "\n\n" + goal);
         }
     }
     private final class DeskDrawing extends View {

@@ -6,8 +6,8 @@
 
 | 項目 | 結果 | 直接證據 |
 | --- | --- | --- |
-| JVM 核心測試 | 28 通過、0 失敗、0 跳過 | `app/build/test-results/testDebugUnitTest/TEST-dev.cofodesk.auto.core.DeskSessionTest.xml`（17）、`ActivityHistoryTest`（4）、`CofoProtocolTest`（4）、`StandingCaloriesTest`（3） |
-| Android 操作測試 | 14 通過、0 失敗、0 跳過 | `app/build/outputs/androidTest-results/connected/debug/TEST-Medium_Phone_API_36.1(AVD) - 16-_app-.xml` |
+| JVM 核心測試 | 36 通過、0 失敗、0 跳過 | `app/build/test-results/testDebugUnitTest/TEST-dev.cofodesk.auto.core.DeskSessionTest.xml`（24）、`ActivityHistoryTest`（4）、`CofoProtocolTest`（4）、`StandingCaloriesTest`（4） |
+| Android 操作測試 | 17 通過、0 失敗、0 跳過 | `app/build/outputs/androidTest-results/connected/debug/TEST-Medium_Phone_API_36.1(AVD) - 16-_app-.xml` |
 | Android lint | 0 errors、3 warnings | 強制重新產生的 `app/build/reports/lint-results-debug.html` |
 | APK 安裝與冷啟動 | 成功，Activity `dev.cofodesk.auto/.MainActivity` | `adb install -r` 回覆 Success、`am start -W` 回覆 Status ok／LaunchState COLD |
 | 四頁視覺檢查 | 控制、歷史、提醒與設定均可見，操作列保留系統邊界 | 下方本次模擬器截圖，已目視檢查 |
@@ -15,7 +15,7 @@
 
 環境：macOS arm64、OpenJDK 21.0.10、Android SDK 36、AVD `Medium_Phone_API_36.1`／`emulator-5554`。裝置回報 API 36；AVD 名稱不是額外 API 相容性證明。
 
-最新通過：28 個 JVM 測試、9 個既有 AppFlow + 5 個 LocaleAppearance = 14 個 Android 測試。文字資源外部化後修正一處空白斷言；通知加入有界等待，驗證真正送達，未降低斷言。
+最新通過（2026-10-20 review 修正後）：36 個 JVM 測試、12 個 AppFlow + 5 個 LocaleAppearance = 17 個 Android 測試，加上 60 個 Python CLI 測試，共 113 個自動測試。AppFlow 改用所選語言的 resource 比對文字，另以一個測試明確斷言預設語言為繁中；通知加入有界等待，驗證真正送達，未降低斷言。權限矩陣腳本會先確認 App 介面是繁中，否則立即中止並說明原因；已實測英文介面時以結束碼 1 中止。
 
 最後完整測試指令：
 
@@ -46,7 +46,7 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 | README 原始 TODO | 目前證據 | 判定 |
 | --- | --- | --- |
 | List all functions | 25 個有來源 ID、官方截圖／手冊、原 App 主要畫面與 REA；連線後流程尚缺 | 公開資料盤點完成；「所有功能」尚未證明 |
-| Design checklist and test cases | `test-plan.md` 包含前置、操作、預期與功能對照，以及原 App／實機矩陣；42 個自動測試通過 | 已完成測試設計與目前軟體驗證；人工／實機案例另行追蹤 |
+| Design checklist and test cases | `test-plan.md` 包含前置、操作、預期與功能對照，以及原 App／實機矩陣；113 個自動測試通過（JVM 36、Android 17、Python 60） | 已完成測試設計與目前軟體驗證；人工／實機案例另行追蹤 |
 | Clone app | 可安裝的原生 App、模擬控制、統計、提醒、保存、BLE 診斷與測試 | 模擬版本已完成；完整 BLE／原 App 相容尚未完成 |
 | Plan further auto features | `automation.md` 含 A1–A6 的順序、條件、取消、優先權與驗收 | 規劃完成，未聲稱自動移動已實作 |
 

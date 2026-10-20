@@ -1,25 +1,32 @@
 package dev.cofodesk.auto.core;
 
 import java.util.Locale;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.time.ZoneId;
 
 /** App state independent of Android: persistence, presets, foreground statistics and reminder. */
 public final class DeskSession {
+    /** Original reminder pickers: hour 0–24 and minute 0–50 in steps of 10. */
+    public static final int MAX_REMINDER_MINUTES = 24 * 60 + 50;
+    public static final int REMINDER_STEP_MINUTES = 10;
     private final DeskPort desk;
     private final int[] presets = {720, 1050, 1180};
     private boolean inches;
-    private double weightKg = 65;
-    private int bodyHeightCm = 170;
+    // Empty like the original app until the user enters them; no stand-in body data.
+    private OptionalDouble weightKg = OptionalDouble.empty();
+    private OptionalInt bodyHeightCm = OptionalInt.empty();
     private int standingThresholdMm = 950;
     private long standingMs;
     private long connectedMs;
     private long reminderAtMs;
     private boolean reminderDue;
     private final ActivityHistory history = new ActivityHistory(ZoneId.systemDefault());
-    private int dailyGoalMinutes = 60;
-    private int sittingReminderMinutes = 40;
-    private int standingReminderMinutes = 60;
+    // 0 means no goal / reminder off, as in the original app's initial state.
+    private int dailyGoalMinutes;
+    private int sittingReminderMinutes;
+    private int standingReminderMinutes;
     private long postureMs;
     private boolean postureWasStanding;
     private boolean postureNotified;
@@ -43,14 +50,16 @@ public final class DeskSession {
     private static void checkSlot(int slot) {
         if (slot < 0 || slot > 2) throw new IllegalArgumentException("error_slot");
     }
-    public void setProfile(int heightCm, double kg, int thresholdMm, boolean useInches) {
-        if (heightCm < 80 || heightCm > 250 || !Double.isFinite(kg) || kg < 20 || kg > 300
+    public void setProfile(OptionalInt heightCm, OptionalDouble kg, int thresholdMm, boolean useInches) {
+        if (heightCm.isPresent() && !validHeight(heightCm.getAsInt()) || kg.isPresent() && !validWeight(kg.getAsDouble())
                 || thresholdMm < SimulatedDesk.MIN_MM || thresholdMm > SimulatedDesk.MAX_MM)
             throw new IllegalArgumentException("error_profile");
         bodyHeightCm = heightCm; weightKg = kg; standingThresholdMm = thresholdMm; inches = useInches;
     }
-    public int bodyHeightCm() { return bodyHeightCm; }
-    public double weightKg() { return weightKg; }
+    private static boolean validHeight(int cm) { return cm >= 80 && cm <= 250; }
+    private static boolean validWeight(double kg) { return Double.isFinite(kg) && kg >= 20 && kg <= 300; }
+    public OptionalInt bodyHeightCm() { return bodyHeightCm; }
+    public OptionalDouble weightKg() { return weightKg; }
     public int standingThresholdMm() { return standingThresholdMm; }
     public boolean inches() { return inches; }
     public String height(int mm) { return String.format(Locale.US, "%.1f %s", inches ? mm / 25.4 : mm / 10.0, inches ? "in" : "cm"); }
@@ -61,15 +70,26 @@ public final class DeskSession {
     public int sittingReminderMinutes() { return sittingReminderMinutes; }
     public int standingReminderMinutes() { return standingReminderMinutes; }
     public void configureGoals(int goal, int sit, int stand) {
-        if (goal < 1 || goal > 480 || sit < 0 || sit > 240 || stand < 0 || stand > 240)
+        if (!allowedMinutes(goal, dailyGoalMinutes) || !allowedMinutes(sit, sittingReminderMinutes)
+                || !allowedMinutes(stand, standingReminderMinutes))
             throw new IllegalArgumentException("error_goals");
         dailyGoalMinutes = goal; sittingReminderMinutes = sit; standingReminderMinutes = stand;
         resetPosture();
     }
+    /** New choices follow the 10-minute step; an unchanged legacy value is kept, not rounded away. */
+    private static boolean allowedMinutes(int value, int current) {
+        return value >= 0 && value <= MAX_REMINDER_MINUTES && (value % REMINDER_STEP_MINUTES == 0 || value == current);
+    }
+    /** Original integer rule: whole standing minutes × 100 / goal, capped at 100. Empty when no goal is set. */
+    public OptionalInt goalPercent(long nowMs) {
+        if (dailyGoalMinutes == 0) return OptionalInt.empty();
+        long minutes = history.total(ActivityHistory.Period.DAY, nowMs) / 1000 / 60;
+        return OptionalInt.of((int) Math.min(100, minutes * 100 / dailyGoalMinutes));
+    }
     public void pause() { stop(); resetPosture(); }
     private void resetPosture() { postureMs = 0; postureNotified = false; }
     public String takeAlert() { String value = alert; alert = ""; return value; }
-    public double estimatedKcal() { return StandingCalories.estimate(standingMs, weightKg); }
+    public double estimatedKcal() { return StandingCalories.estimate(standingMs, weightKg.orElse(0)); }
     public void resetStatistics() { standingMs = 0; connectedMs = 0; history.clear(); resetPosture(); }
     public void advanceForeground(long elapsedMs, long nowMs) {
         if (elapsedMs < 0) throw new IllegalArgumentException("error_time");
@@ -98,7 +118,7 @@ public final class DeskSession {
             desk.advance(slice);
             remaining -= slice;
         }
-        if (todayBefore < dailyGoalMinutes * 60_000L && history.total(ActivityHistory.Period.DAY, nowMs) >= dailyGoalMinutes * 60_000L)
+        if (dailyGoalMinutes > 0 && todayBefore < dailyGoalMinutes * 60_000L && history.total(ActivityHistory.Period.DAY, nowMs) >= dailyGoalMinutes * 60_000L)
             alert = "alert_goal";
         reconcileReminder(nowMs);
     }
@@ -116,7 +136,8 @@ public final class DeskSession {
     public Properties save() {
         Properties p = new Properties();
         for (int i = 0; i < 3; i++) p.setProperty("preset" + i, "" + presets[i]);
-        p.setProperty("heightCm", "" + bodyHeightCm); p.setProperty("weightKg", "" + weightKg);
+        p.setProperty("heightCm", bodyHeightCm.isPresent() ? "" + bodyHeightCm.getAsInt() : "");
+        p.setProperty("weightKg", weightKg.isPresent() ? "" + weightKg.getAsDouble() : "");
         p.setProperty("threshold", "" + standingThresholdMm); p.setProperty("inches", "" + inches);
         p.setProperty("standingMs", "" + standingMs); p.setProperty("connectedMs", "" + connectedMs);
         p.setProperty("reminderAtMs", "" + reminderAtMs);
@@ -128,19 +149,22 @@ public final class DeskSession {
     }
     public void restore(Properties p) {
         // Each field recovers independently; a corrupt value must not make the app unlaunchable.
-        bodyHeightCm = integer(p, "heightCm", 170, 80, 250);
-        try { double kg = Double.parseDouble(p.getProperty("weightKg", "65"));
-            weightKg = Double.isFinite(kg) && kg >= 20 && kg <= 300 ? kg : 65;
-        } catch (NumberFormatException e) { weightKg = 65; }
+        // Values saved by older versions are kept, even if they equal the old 170 cm / 65 kg defaults:
+        // the old format cannot tell whether the user typed them.
+        int cm = integer(p, "heightCm", 0, 80, 250);
+        bodyHeightCm = cm == 0 ? OptionalInt.empty() : OptionalInt.of(cm);
+        try { double kg = Double.parseDouble(p.getProperty("weightKg", ""));
+            weightKg = validWeight(kg) ? OptionalDouble.of(kg) : OptionalDouble.empty();
+        } catch (NumberFormatException e) { weightKg = OptionalDouble.empty(); }
         standingThresholdMm = integer(p, "threshold", 950, SimulatedDesk.MIN_MM, SimulatedDesk.MAX_MM);
         inches = Boolean.parseBoolean(p.getProperty("inches", "false"));
         for (int i = 0; i < 3; i++) presets[i] = integer(p, "preset" + i, new int[]{720, 1050, 1180}[i], SimulatedDesk.MIN_MM, SimulatedDesk.MAX_MM);
         standingMs = nonnegative(p, "standingMs");
         connectedMs = Math.max(standingMs, nonnegative(p, "connectedMs"));
         reminderAtMs = nonnegative(p, "reminderAtMs");
-        dailyGoalMinutes = integer(p, "goal", 60, 1, 480);
-        sittingReminderMinutes = integer(p, "sitReminder", 40, 0, 240);
-        standingReminderMinutes = integer(p, "standReminder", 60, 0, 240);
+        dailyGoalMinutes = integer(p, "goal", 0, 0, MAX_REMINDER_MINUTES);
+        sittingReminderMinutes = integer(p, "sitReminder", 0, 0, MAX_REMINDER_MINUTES);
+        standingReminderMinutes = integer(p, "standReminder", 0, 0, MAX_REMINDER_MINUTES);
         history.restore(p);
     }
     private static int integer(Properties p, String key, int fallback, int min, int max) {
