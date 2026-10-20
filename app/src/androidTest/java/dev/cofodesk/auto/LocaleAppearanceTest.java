@@ -94,8 +94,23 @@ public class LocaleAppearanceTest {
         assertEquals("Sit–stand reminders", manager.getNotificationChannel(ReminderReceiver.CHANNEL).getName().toString());
         BleInspector inspector = new BleInspector(UiPreferences.localized(context), () -> {});
         assertTrue(inspector.report().startsWith("Scan nearby BLE devices"));
-        assertEquals("Connect a desk first", UiText.message(UiPreferences.localized(context), "error_not_connected"));
-        assertEquals("Daily standing goal reached", UiText.message(UiPreferences.localized(context), "alert_goal"));
+        assertEquals("Connect a desk first", UiText.refusal(UiPreferences.localized(context), dev.cofodesk.auto.core.Refused.Reason.NOT_CONNECTED));
+        assertEquals("Daily standing goal reached", UiText.alert(UiPreferences.localized(context), dev.cofodesk.auto.core.Alert.GOAL));
+        assertEquals("Desk reported error E01", UiText.fault(UiPreferences.localized(context), dev.cofodesk.auto.core.Fault.device("E01")));
+        assertEquals("Desk reported an unknown error (0x11)", UiText.fault(UiPreferences.localized(context), dev.cofodesk.auto.core.Fault.unknown("0x11")));
+    }
+    @Test public void everyCoreCodeHasTextInEveryLanguage() {
+        for (String language : UiPreferences.LANGUAGES) {
+            UiPreferences.language(context, language);
+            Context localized = UiPreferences.localized(context);
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (dev.cofodesk.auto.core.Refused.Reason reason : dev.cofodesk.auto.core.Refused.Reason.values())
+                assertTrue(language + " " + reason, seen.add(UiText.refusal(localized, reason)));
+            for (dev.cofodesk.auto.core.Alert alert : dev.cofodesk.auto.core.Alert.values())
+                assertTrue(language + " " + alert, seen.add(UiText.alert(localized, alert)));
+            for (dev.cofodesk.auto.core.Fault fault : new dev.cofodesk.auto.core.Fault[]{dev.cofodesk.auto.core.Fault.NONE, dev.cofodesk.auto.core.Fault.COLLISION, dev.cofodesk.auto.core.Fault.device("E01"), dev.cofodesk.auto.core.Fault.unknown("0x11")})
+                assertTrue(language + " " + fault, seen.add(UiText.fault(localized, fault)));
+        }
     }
     @Test public void invalidStoredLanguageFallsBackAndParagraphsHaveLineBreaks() {
         context.getSharedPreferences("appearance", 0).edit().putString("language", "unsupported").commit();

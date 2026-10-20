@@ -1,28 +1,39 @@
 package dev.cofodesk.auto;
 
 import android.content.Context;
+import dev.cofodesk.auto.core.Alert;
+import dev.cofodesk.auto.core.Fault;
+import dev.cofodesk.auto.core.Refused;
 
-/** Core message codes remain independent of Android and of the selected UI language. */
+/** Core codes stay independent of Android; exhaustive switches make a missing translation a compile error. */
 final class UiText {
-    static String message(Context context, String code) {
-        int resource = switch (code) {
-            case "error_not_connected" -> R.string.error_not_connected;
-            case "error_locked" -> R.string.error_locked;
-            case "error_fault" -> R.string.error_fault;
-            case "error_height" -> R.string.error_height;
-            case "error_limits_unknown" -> R.string.error_limits_unknown;
-            case "error_time" -> R.string.error_time;
-            case "error_save_preset" -> R.string.error_save_preset;
-            case "error_slot" -> R.string.error_slot;
-            case "error_profile" -> R.string.error_profile;
-            case "error_goals" -> R.string.error_goals;
-            case "error_reminder" -> R.string.error_reminder;
-            case "fault_collision" -> R.string.fault_collision;
-            case "alert_standing" -> R.string.alert_standing;
-            case "alert_sitting" -> R.string.alert_sitting;
-            case "alert_goal" -> R.string.alert_goal;
-            default -> 0;
+    static String refusal(Context context, Refused.Reason reason) {
+        return context.getString(switch (reason) {
+            case NOT_CONNECTED -> R.string.error_not_connected;
+            case LOCKED -> R.string.error_locked;
+            case FAULT -> R.string.error_fault;
+            case HEIGHT -> R.string.error_height;
+            case LIMITS_UNKNOWN -> R.string.error_limits_unknown;
+            case SAVE_PRESET -> R.string.error_save_preset;
+            case SLOT -> R.string.error_slot;
+            case PROFILE -> R.string.error_profile;
+            case GOALS -> R.string.error_goals;
+            case REMINDER -> R.string.error_reminder;
+        });
+    }
+    static String alert(Context context, Alert alert) {
+        return context.getString(switch (alert) {
+            case STANDING -> R.string.alert_standing;
+            case SITTING -> R.string.alert_sitting;
+            case GOAL -> R.string.alert_goal;
+        });
+    }
+    static String fault(Context context, Fault fault) {
+        return switch (fault.kind()) {
+            case NONE -> context.getString(R.string.fault_none);
+            case COLLISION -> context.getString(R.string.fault_collision);
+            case DEVICE -> context.getString(R.string.fault_device, fault.code());
+            case UNKNOWN -> context.getString(R.string.fault_unknown, fault.code());
         };
-        return resource == 0 ? code : context.getString(resource);
     }
 }

@@ -14,8 +14,8 @@ public abstract class DeskPortContract {
     @Before public void createPort() { desk = create(); }
 
     @Test public void disconnectedPortRefusesMovementAndHasNoLimits() {
-        assertThrows(IllegalStateException.class, () -> desk.moveTo(desk.state().heightMm()));
-        assertThrows(IllegalStateException.class, () -> desk.startMove(DeskPort.Direction.UP));
+        assertThrows(Refused.class, () -> desk.moveTo(desk.state().heightMm()));
+        assertThrows(Refused.class, () -> desk.startMove(DeskPort.Direction.UP));
         assertFalse(desk.state().moving()); assertFalse(desk.state().limits().isPresent());
     }
     @Test public void directionsRunToTheReportedLimits() {
@@ -28,8 +28,8 @@ public abstract class DeskPortContract {
     }
     @Test public void targetsOutsideTheLimitsAreRefused() {
         TravelLimits limits = connectWithLimits();
-        assertThrows(IllegalArgumentException.class, () -> desk.moveTo(limits.minMm() - 1));
-        assertThrows(IllegalArgumentException.class, () -> desk.moveTo(limits.maxMm() + 1));
+        assertThrows(Refused.class, () -> desk.moveTo(limits.minMm() - 1));
+        assertThrows(Refused.class, () -> desk.moveTo(limits.maxMm() + 1));
         assertFalse(desk.state().moving());
     }
     @Test public void stopHoldsPositionAndReconnectDoesNotResume() {
@@ -44,9 +44,9 @@ public abstract class DeskPortContract {
         connectWithLimits();
         desk.startMove(DeskPort.Direction.UP); desk.setLocked(true);
         assertFalse(desk.state().moving());
-        assertThrows(IllegalStateException.class, () -> desk.startMove(DeskPort.Direction.DOWN));
+        assertThrows(Refused.class, () -> desk.startMove(DeskPort.Direction.DOWN));
         desk.setLocked(false); desk.startMove(DeskPort.Direction.UP); injectFault();
-        assertFalse(desk.state().moving()); assertFalse(desk.state().fault().isEmpty());
-        assertThrows(IllegalStateException.class, () -> desk.startMove(DeskPort.Direction.DOWN));
+        assertFalse(desk.state().moving()); assertTrue(desk.state().fault().present());
+        assertEquals(Refused.Reason.FAULT, assertThrows(Refused.class, () -> desk.startMove(DeskPort.Direction.DOWN)).reason());
     }
 }

@@ -113,12 +113,14 @@
     <string name="error_fault">请先清除故障</string>
     <string name="error_height">高度超出桌子的行程范围</string>
     <string name="error_limits_unknown">尚未获取桌子的行程范围，无法移动</string>
-    <string name="error_time">时间不能倒退</string>
     <string name="error_save_preset">请在已连接且停止时保存</string>
     <string name="error_slot">无效的记忆位置</string>
     <string name="error_profile">身高 80–250 cm、体重 20–300 kg、站立阈值 63–128 cm</string>
     <string name="error_goals">目标与提醒须为 0–1490 分钟（24:50），以 10 分钟为单位；0 表示未设置或关闭</string>
     <string name="error_reminder">提醒时间须介于 1–180 分钟</string>
+    <string name="fault_none">无故障</string>
+    <string name="fault_device">桌子报告错误 %1$s</string>
+    <string name="fault_unknown">桌子报告未知错误（%1$s）</string>
     <string name="fault_collision">模拟障碍物：已停止</string>
     <string name="alert_standing">久站提醒：可以坐下休息一下</string>
     <string name="alert_sitting">久坐提醒：可以起身活动一下</string>

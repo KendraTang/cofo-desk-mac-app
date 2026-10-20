@@ -6,7 +6,7 @@ package dev.cofodesk.auto.core;
 public final class StandingCalories {
     private StandingCalories() {}
     public static long estimate(long standingMs, double weightKg) {
-        if (standingMs < 0) throw new IllegalArgumentException("error_time");
+        if (standingMs < 0) throw new IllegalArgumentException("Negative standing time");
         if (!Double.isFinite(weightKg) || weightKg <= 0) return 0;
         return (long) ((standingMs / 1000L) * (weightKg * 1.5 + 60) / 3600.0);
     }

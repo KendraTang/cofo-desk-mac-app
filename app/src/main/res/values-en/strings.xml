@@ -113,12 +113,14 @@
     <string name="error_fault">Clear the fault first</string>
     <string name="error_height">Height is outside the desk\'s travel range</string>
     <string name="error_limits_unknown">The desk has not reported its travel range yet</string>
-    <string name="error_time">Elapsed time cannot be negative</string>
     <string name="error_save_preset">Connect and stop before saving a height</string>
     <string name="error_slot">Invalid memory slot</string>
     <string name="error_profile">Height: 80–250 cm; weight: 20–300 kg; standing threshold: 63–128 cm</string>
     <string name="error_goals">Goal and reminders: 0–1490 min (24:50) in 10-minute steps; 0 = not set / off</string>
     <string name="error_reminder">Countdown must be 1–180 minutes</string>
+    <string name="fault_none">No fault</string>
+    <string name="fault_device">Desk reported error %1$s</string>
+    <string name="fault_unknown">Desk reported an unknown error (%1$s)</string>
     <string name="fault_collision">Simulated obstacle: stopped</string>
     <string name="alert_standing">Standing reminder: take a seated break</string>
     <string name="alert_sitting">Sitting reminder: time to get up</string>

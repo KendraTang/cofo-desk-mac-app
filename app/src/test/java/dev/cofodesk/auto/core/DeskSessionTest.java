@@ -2,6 +2,7 @@ package dev.cofodesk.auto.core;
 
 import org.junit.Before;
 import org.junit.Test;
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.Properties;
@@ -12,7 +13,7 @@ public class DeskSessionTest {
     private DeskSession app;
     @Before public void setup() { desk = new SimulatedDesk(); app = new DeskSession(desk); }
     @Test public void disconnectedCannotMove() {
-        assertThrows(IllegalStateException.class, () -> app.jog(true));
+        assertEquals(Refused.Reason.NOT_CONNECTED, assertThrows(Refused.class, () -> app.jog(true)).reason());
         assertFalse(app.state().moving());
     }
     @Test public void movesAtSpecifiedSpeedAndStopsAtTarget() {
@@ -33,8 +34,8 @@ public class DeskSessionTest {
     }
     @Test public void limitsRejectInvalidTargetsAndClampJog() {
         app.connect();
-        assertThrows(IllegalArgumentException.class, () -> app.moveTo(629));
-        assertThrows(IllegalArgumentException.class, () -> app.moveTo(1281));
+        assertThrows(Refused.class, () -> app.moveTo(629));
+        assertThrows(Refused.class, () -> app.moveTo(1281));
         app.jog(true); desk.advance(100_000); assertEquals(1280, app.state().heightMm());
         app.nudge(true); desk.advance(1000); assertEquals(1280, app.state().heightMm());
         app.jog(false); desk.advance(100_000); assertEquals(630, app.state().heightMm());
@@ -42,10 +43,10 @@ public class DeskSessionTest {
     @Test public void collisionAndLockStopAndBlockMovement() {
         app.connect(); app.jog(true); desk.advance(1000); desk.collide();
         int height = app.state().heightMm(); assertFalse(app.state().moving());
-        assertThrows(IllegalStateException.class, () -> app.recall(1));
+        assertThrows(Refused.class, () -> app.recall(1));
         desk.clearFault(); app.jog(true); app.lock(true); desk.advance(1000);
         assertEquals(height, app.state().heightMm());
-        assertThrows(IllegalStateException.class, () -> app.jog(false));
+        assertThrows(Refused.class, () -> app.jog(false));
         app.lock(false); app.jog(true); assertTrue(app.state().moving());
     }
     @Test public void pauseStopsMotorAndNeverAutoResumes() {
@@ -53,19 +54,19 @@ public class DeskSessionTest {
         assertEquals(720, app.state().heightMm()); assertFalse(app.state().moving());
     }
     @Test public void presetsRequireStationaryConnectionAndPersist() {
-        assertThrows(IllegalStateException.class, () -> app.savePreset(0));
+        assertThrows(Refused.class, () -> app.savePreset(0));
         app.connect(); app.moveTo(900);
-        assertThrows(IllegalStateException.class, () -> app.savePreset(0));
+        assertThrows(Refused.class, () -> app.savePreset(0));
         desk.advance(20_000); app.savePreset(0); assertEquals(900, app.preset(0));
         DeskSession next = new DeskSession(new SimulatedDesk()); next.restore(app.save());
         assertEquals(900, next.preset(0)); assertFalse(next.state().connected());
-        assertThrows(IllegalArgumentException.class, () -> app.recall(3));
+        assertThrows(Refused.class, () -> app.recall(3));
     }
     @Test public void profileUnitsAndValidation() {
         app.setProfile(OptionalInt.of(180), OptionalDouble.of(70.5), 1000, true);
         assertEquals("39.4 in", app.height(1000));
-        assertThrows(IllegalArgumentException.class, () -> app.setProfile(OptionalInt.of(180), OptionalDouble.of(Double.NaN), 1000, true));
-        assertThrows(IllegalArgumentException.class, () -> app.setProfile(OptionalInt.of(20), OptionalDouble.of(70), 1000, true));
+        assertThrows(Refused.class, () -> app.setProfile(OptionalInt.of(180), OptionalDouble.of(Double.NaN), 1000, true));
+        assertThrows(Refused.class, () -> app.setProfile(OptionalInt.of(20), OptionalDouble.of(70), 1000, true));
         DeskSession next = new DeskSession(new SimulatedDesk()); next.restore(app.save());
         assertEquals(70.5, next.weightKg().getAsDouble(), .001); assertEquals(180, next.bodyHeightCm().getAsInt());
         assertEquals(1000, next.standingThresholdMm()); assertTrue(next.inches());
@@ -91,9 +92,9 @@ public class DeskSessionTest {
         app.configureGoals(24 * 60, 24 * 60, 24 * 60);
         app.configureGoals(1490, 1490, 1490);
         assertEquals(1490, app.dailyGoalMinutes());
-        assertThrows(IllegalArgumentException.class, () -> app.configureGoals(1500, 0, 0));
-        assertThrows(IllegalArgumentException.class, () -> app.configureGoals(-10, 0, 0));
-        assertThrows(IllegalArgumentException.class, () -> app.configureGoals(0, 15, 0));
+        assertThrows(Refused.class, () -> app.configureGoals(1500, 0, 0));
+        assertThrows(Refused.class, () -> app.configureGoals(-10, 0, 0));
+        assertThrows(Refused.class, () -> app.configureGoals(0, 15, 0));
         DeskSession next = new DeskSession(new SimulatedDesk()); next.restore(app.save());
         assertEquals(1490, next.standingReminderMinutes());
     }
@@ -103,7 +104,7 @@ public class DeskSessionTest {
         assertEquals(45, app.dailyGoalMinutes());
         app.configureGoals(45, 25, 30);
         assertEquals(25, app.sittingReminderMinutes());
-        assertThrows(IllegalArgumentException.class, () -> app.configureGoals(55, 25, 30));
+        assertThrows(Refused.class, () -> app.configureGoals(55, 25, 30));
     }
     @Test public void goalPercentUsesTheOriginalIntegerRule() {
         long noon = java.time.LocalDate.of(2026, 10, 20).atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
@@ -125,13 +126,13 @@ public class DeskSessionTest {
     @Test public void zeroGoalNeverRaisesTheGoalAlert() {
         app.connect(); app.moveTo(1050); desk.advance(20_000);
         app.advanceForeground(120_000, 120_000);
-        assertEquals("", app.takeAlert());
+        assertEquals(Optional.empty(), app.takeAlert());
     }
     @Test public void simulatorRestoresOnlyAStoppedDisconnectedPosition() {
         SimulatedDesk restored = new SimulatedDesk(); restored.restore(1000);
         assertEquals(1000, restored.state().heightMm());
         assertFalse(restored.state().connected()); assertFalse(restored.state().moving());
-        assertFalse(restored.state().locked()); assertEquals("", restored.state().fault());
+        assertFalse(restored.state().locked()); assertEquals(Fault.NONE, restored.state().fault());
         restored.connect(); assertFalse(restored.state().moving());
         assertThrows(IllegalStateException.class, () -> restored.restore(900));
         SimulatedDesk invalid = new SimulatedDesk(); invalid.restore(5000);
@@ -158,7 +159,7 @@ public class DeskSessionTest {
         assertEquals(1000, next.reminderRemainingMs(60_000));
         next.reconcileReminder(61_000); assertTrue(next.reminderDue()); assertEquals(0, next.reminderAtMs());
         next.cancelReminder(); next.reconcileReminder(70_000); assertFalse(next.reminderDue());
-        assertThrows(IllegalArgumentException.class, () -> app.startReminder(0, 0));
+        assertThrows(Refused.class, () -> app.startReminder(0, 0));
     }
     @Test public void cancelAndRestartReplaceDeadline() {
         app.startReminder(1, 0); app.startReminder(2, 0); app.reconcileReminder(60_000); assertFalse(app.reminderDue());
@@ -166,25 +167,25 @@ public class DeskSessionTest {
     }
     @Test public void sittingReminderFiresOnceAndPauseResetsContinuousTime() {
         app.configureGoals(60, 10, 10); app.connect(); app.advanceForeground(599_000, 599_000);
-        assertEquals("", app.takeAlert()); app.pause(); app.advanceForeground(2000, 601_000); assertEquals("", app.takeAlert());
-        app.advanceForeground(598_000, 1_199_000); assertTrue(app.takeAlert().equals("alert_sitting"));
-        app.advanceForeground(600_000, 1_799_000); assertEquals("", app.takeAlert());
+        assertEquals(Optional.empty(), app.takeAlert()); app.pause(); app.advanceForeground(2000, 601_000); assertEquals(Optional.empty(), app.takeAlert());
+        app.advanceForeground(598_000, 1_199_000); assertEquals(Optional.of(Alert.SITTING), app.takeAlert());
+        app.advanceForeground(600_000, 1_799_000); assertEquals(Optional.empty(), app.takeAlert());
     }
     @Test public void standingGoalAndReminderPersistAndCanBeDisabled() {
         app.configureGoals(10, 0, 0); app.connect(); app.moveTo(1050); desk.advance(20_000);
         long noon = java.time.LocalDate.of(2026, 10, 20).atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
-        app.advanceForeground(600_000, noon); assertTrue(app.takeAlert().equals("alert_goal"));
-        app.advanceForeground(60_000, noon + 60_000); assertEquals("", app.takeAlert());
+        app.advanceForeground(600_000, noon); assertEquals(Optional.of(Alert.GOAL), app.takeAlert());
+        app.advanceForeground(60_000, noon + 60_000); assertEquals(Optional.empty(), app.takeAlert());
         DeskSession next = new DeskSession(new SimulatedDesk()); next.restore(app.save());
         assertEquals(10, next.dailyGoalMinutes()); assertEquals(0, next.standingReminderMinutes()); assertEquals(660_000, next.standingMs());
     }
     @Test public void standingReminderResetsWhenPostureChanges() {
         app.configureGoals(120, 0, 10); app.connect(); app.moveTo(1050); desk.advance(20_000);
-        app.advanceForeground(600_000, 600_000); assertTrue(app.takeAlert().equals("alert_standing"));
-        app.advanceForeground(600_000, 1_200_000); assertEquals("", app.takeAlert());
+        app.advanceForeground(600_000, 600_000); assertEquals(Optional.of(Alert.STANDING), app.takeAlert());
+        app.advanceForeground(600_000, 1_200_000); assertEquals(Optional.empty(), app.takeAlert());
         app.moveTo(720); desk.advance(20_000); app.advanceForeground(1000, 1_201_000);
         app.moveTo(1050); desk.advance(20_000); app.advanceForeground(600_000, 1_801_000);
-        assertTrue(app.takeAlert().equals("alert_standing"));
+        assertEquals(Optional.of(Alert.STANDING), app.takeAlert());
     }
     @Test public void corruptPreferencesRecoverWithoutDiscardingValidFields() {
         Properties p = new Properties(); p.setProperty("weightKg", "NaN"); p.setProperty("preset0", "99999");

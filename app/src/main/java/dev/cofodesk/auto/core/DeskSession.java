@@ -1,6 +1,7 @@
 package dev.cofodesk.auto.core;
 
 import java.util.Locale;
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.Properties;
@@ -35,7 +36,7 @@ public final class DeskSession {
     private long postureMs;
     private boolean postureWasStanding;
     private boolean postureNotified;
-    private String alert = "";
+    private Optional<Alert> alert = Optional.empty();
 
     public DeskSession(DeskPort desk) { this.desk = desk; }
     public DeskPort.State state() { return desk.state(); }
@@ -55,16 +56,16 @@ public final class DeskSession {
     public void recall(int slot) { desk.moveTo(preset(slot)); }
     public void savePreset(int slot) {
         checkSlot(slot);
-        if (!state().connected() || state().moving()) throw new IllegalStateException("error_save_preset");
+        if (!state().connected() || state().moving()) throw new Refused(Refused.Reason.SAVE_PRESET);
         presets[slot] = state().heightMm();
     }
     private static void checkSlot(int slot) {
-        if (slot < 0 || slot >= DEFAULT_PRESETS.length) throw new IllegalArgumentException("error_slot");
+        if (slot < 0 || slot >= DEFAULT_PRESETS.length) throw new Refused(Refused.Reason.SLOT);
     }
     public void setProfile(OptionalInt heightCm, OptionalDouble kg, int thresholdMm, boolean useInches) {
         if (heightCm.isPresent() && !validHeight(heightCm.getAsInt()) || kg.isPresent() && !validWeight(kg.getAsDouble())
                 || !SETTING_RANGE.contains(thresholdMm))
-            throw new IllegalArgumentException("error_profile");
+            throw new Refused(Refused.Reason.PROFILE);
         bodyHeightCm = heightCm; weightKg = kg; standingThresholdMm = thresholdMm; inches = useInches;
     }
     private static boolean validHeight(int cm) { return cm >= 80 && cm <= 250; }
@@ -83,7 +84,7 @@ public final class DeskSession {
     public void configureGoals(int goal, int sit, int stand) {
         if (!allowedMinutes(goal, dailyGoalMinutes) || !allowedMinutes(sit, sittingReminderMinutes)
                 || !allowedMinutes(stand, standingReminderMinutes))
-            throw new IllegalArgumentException("error_goals");
+            throw new Refused(Refused.Reason.GOALS);
         dailyGoalMinutes = goal; sittingReminderMinutes = sit; standingReminderMinutes = stand;
         resetPosture();
     }
@@ -99,11 +100,11 @@ public final class DeskSession {
     }
     public void pause() { stop(); resetPosture(); }
     private void resetPosture() { postureMs = 0; postureNotified = false; }
-    public String takeAlert() { String value = alert; alert = ""; return value; }
+    public Optional<Alert> takeAlert() { Optional<Alert> value = alert; alert = Optional.empty(); return value; }
     public double estimatedKcal() { return StandingCalories.estimate(standingMs, weightKg.orElse(0)); }
     public void resetStatistics() { standingMs = 0; connectedMs = 0; history.clear(); resetPosture(); }
     public void advanceForeground(long elapsedMs, long nowMs) {
-        if (elapsedMs < 0) throw new IllegalArgumentException("error_time");
+        if (elapsedMs < 0) throw new IllegalArgumentException("Negative elapsed time");
         // Integrate in small intervals, so time crossing the standing threshold is not overcounted.
         long remaining = elapsedMs;
         long todayBefore = history.total(ActivityHistory.Period.DAY, nowMs);
@@ -122,7 +123,7 @@ public final class DeskSession {
                 postureMs += slice;
                 int limit = standing ? standingReminderMinutes : sittingReminderMinutes;
                 if (limit > 0 && !postureNotified && postureMs >= limit * 60_000L) {
-                    alert = standing ? "alert_standing" : "alert_sitting";
+                    alert = Optional.of(standing ? Alert.STANDING : Alert.SITTING);
                     postureNotified = true;
                 }
             }
@@ -130,11 +131,11 @@ public final class DeskSession {
             remaining -= slice;
         }
         if (dailyGoalMinutes > 0 && todayBefore < dailyGoalMinutes * 60_000L && history.total(ActivityHistory.Period.DAY, nowMs) >= dailyGoalMinutes * 60_000L)
-            alert = "alert_goal";
+            alert = Optional.of(Alert.GOAL);
         reconcileReminder(nowMs);
     }
     public void startReminder(int minutes, long nowMs) {
-        if (minutes < 1 || minutes > 180) throw new IllegalArgumentException("error_reminder");
+        if (minutes < 1 || minutes > 180) throw new Refused(Refused.Reason.REMINDER);
         reminderAtMs = nowMs + minutes * 60_000L; reminderDue = false;
     }
     public void cancelReminder() { reminderAtMs = 0; reminderDue = false; }

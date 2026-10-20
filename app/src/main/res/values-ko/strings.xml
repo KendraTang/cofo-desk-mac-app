@@ -113,12 +113,14 @@
     <string name="error_fault">먼저 오류를 해제하세요</string>
     <string name="error_height">높이가 책상의 이동 범위를 벗어났습니다</string>
     <string name="error_limits_unknown">책상의 이동 범위를 아직 받지 못해 움직일 수 없습니다</string>
-    <string name="error_time">경과 시간은 음수일 수 없습니다</string>
     <string name="error_save_preset">연결하고 정지한 뒤 높이를 저장하세요</string>
     <string name="error_slot">잘못된 저장 위치입니다</string>
     <string name="error_profile">키 80–250 cm, 체중 20–300 kg, 서기 기준 63–128 cm로 입력하세요</string>
     <string name="error_goals">목표와 알림은 0–1490분(24:50), 10분 단위입니다 (0 = 미설정/끄기)</string>
     <string name="error_reminder">카운트다운은 1–180분이어야 합니다</string>
+    <string name="fault_none">오류 없음</string>
+    <string name="fault_device">책상이 오류 %1$s을(를) 보고했습니다</string>
+    <string name="fault_unknown">책상이 알 수 없는 오류(%1$s)를 보고했습니다</string>
     <string name="fault_collision">시뮬레이션 장애물: 정지</string>
     <string name="alert_standing">오래 서기 알림: 앉아서 쉬세요</string>
     <string name="alert_sitting">오래 앉기 알림: 일어나 움직이세요</string>

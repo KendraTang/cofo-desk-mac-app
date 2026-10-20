@@ -12,7 +12,7 @@ public final class CofoProtocol {
     public static byte[] requestLimits() { return frame(0x07); }
     /** Wire field is unsigned millimetres; the transport must separately enforce device limits. */
     public static byte[] moveToMillimetres(int millimetres) {
-        if (millimetres < 0 || millimetres > 0xffff) throw new IllegalArgumentException("error_height");
+        if (millimetres < 0 || millimetres > 0xffff) throw new IllegalArgumentException("Target must fit an unsigned 16-bit millimetre field");
         return frame(0x1b, (byte) (millimetres >>> 8), (byte) millimetres);
     }
     private static byte[] frame(int opcode, byte... payload) {

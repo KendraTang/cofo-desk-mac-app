@@ -10,7 +10,7 @@ public final class SimulatedDesk implements DeskPort {
     private int targetMm = START_MM;
     private boolean connected;
     private boolean locked;
-    private String fault = "";
+    private Fault fault = Fault.NONE;
 
     /** Like a real desk, limits are only known while connected. */
     @Override public State state() {
@@ -21,7 +21,7 @@ public final class SimulatedDesk implements DeskPort {
     @Override public void disconnect() { stop(); connected = false; }
     @Override public void moveTo(int mm) {
         checkMovable();
-        if (!LIMITS.contains(mm)) throw new IllegalArgumentException("error_height");
+        if (!LIMITS.contains(mm)) throw new Refused(Refused.Reason.HEIGHT);
         targetMm = mm;
     }
     @Override public void startMove(Direction direction) {
@@ -29,23 +29,23 @@ public final class SimulatedDesk implements DeskPort {
         targetMm = direction == Direction.UP ? LIMITS.maxMm() : LIMITS.minMm();
     }
     private void checkMovable() {
-        if (!connected) throw new IllegalStateException("error_not_connected");
-        if (locked) throw new IllegalStateException("error_locked");
-        if (!fault.isEmpty()) throw new IllegalStateException("error_fault");
+        if (!connected) throw new Refused(Refused.Reason.NOT_CONNECTED);
+        if (locked) throw new Refused(Refused.Reason.LOCKED);
+        if (fault.present()) throw new Refused(Refused.Reason.FAULT);
     }
     @Override public void stop() { targetMm = (int) Math.round(heightMm); heightMm = targetMm; }
     @Override public void setLocked(boolean value) { stop(); locked = value; }
     @Override public void advance(long ms) {
-        if (ms < 0) throw new IllegalArgumentException("error_time");
+        if (ms < 0) throw new IllegalArgumentException("Negative elapsed time");
         if (!state().moving()) return;
         double step = Math.min(Math.abs(targetMm - heightMm), 35.0 * ms / 1000.0);
         heightMm += Math.signum(targetMm - heightMm) * step;
     }
     /** Restores a saved stopped position only; connection, motion, lock and fault always start cleared. */
     public void restore(int mm) {
-        if (connected) throw new IllegalStateException("error_restore_connected");
+        if (connected) throw new IllegalStateException("Restore only while disconnected");
         heightMm = targetMm = LIMITS.contains(mm) ? mm : START_MM;
     }
-    public void collide() { stop(); fault = "fault_collision"; }
-    public void clearFault() { fault = ""; }
+    public void collide() { stop(); fault = Fault.COLLISION; }
+    public void clearFault() { fault = Fault.NONE; }
 }

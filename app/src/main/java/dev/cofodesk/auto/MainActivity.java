@@ -36,8 +36,7 @@ public final class MainActivity extends Activity {
             long now = SystemClock.elapsedRealtime();
             session.advanceForeground(Math.min(now - lastTick, 2000), System.currentTimeMillis());
             lastTick = now;
-            String alert = session.takeAlert();
-            if (!alert.isEmpty()) { String message = UiText.message(MainActivity.this, alert); Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show(); ReminderReceiver.show(MainActivity.this, message); }
+            session.takeAlert().ifPresent(alert -> { String message = UiText.alert(MainActivity.this, alert); Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show(); ReminderReceiver.show(MainActivity.this, message); });
             refresh();
             if (now - lastSave > 5000) { store.save(session); lastSave = now; }
             handler.postDelayed(this, 100);
@@ -99,7 +98,7 @@ public final class MainActivity extends Activity {
     private void runAction(Runnable action) {
         try { action.run(); store.save(session); refresh(); }
         catch (NumberFormatException e) { Toast.makeText(this, s(R.string.invalid_number), Toast.LENGTH_LONG).show(); }
-        catch (IllegalArgumentException | IllegalStateException e) { Toast.makeText(this, UiText.message(this, e.getMessage()), Toast.LENGTH_LONG).show(); }
+        catch (Refused e) { Toast.makeText(this, UiText.refusal(this, e.reason()), Toast.LENGTH_LONG).show(); }
     }
     private void note(String value) { content.addView(text(value, 13, MUTED)); }
     private void title(String value) { content.addView(text(value, 25, INK)); }
@@ -302,7 +301,7 @@ public final class MainActivity extends Activity {
     private void refresh() {
         DeskPort.State state = session.state();
         if (height != null) height.setText(state.connected() ? session.height(state.heightMm()) : "— " + (session.inches() ? "in" : "cm"));
-        if (status != null) status.setText(!state.connected() ? s(R.string.not_connected) : !state.fault().isEmpty() ? UiText.message(this, state.fault()) : state.locked() ? s(R.string.locked) : state.moving() ? s(R.string.moving) : s(R.string.connected_stopped));
+        if (status != null) status.setText(!state.connected() ? s(R.string.not_connected) : state.fault().present() ? UiText.fault(this, state.fault()) : state.locked() ? s(R.string.locked) : state.moving() ? s(R.string.moving) : s(R.string.connected_stopped));
         if (connect != null) connect.setText(state.connected() ? s(R.string.disconnect) : s(R.string.connect));
         if (lock != null) lock.setText(state.locked() ? s(R.string.unlock) : s(R.string.lock));
         if (drawing != null) drawing.invalidate();

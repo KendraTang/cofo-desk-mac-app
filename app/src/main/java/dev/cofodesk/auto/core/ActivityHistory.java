@@ -16,7 +16,7 @@ public final class ActivityHistory {
     private final Map<LocalDate, Long> standing = new TreeMap<>();
     public ActivityHistory(ZoneId zone) { this.zone = zone; }
     public void add(long fromMs, long toMs) {
-        if (toMs < fromMs) throw new IllegalArgumentException("error_time");
+        if (toMs < fromMs) throw new IllegalArgumentException("Interval ends before it starts");
         while (fromMs < toMs) {
             LocalDate date = date(fromMs);
             long end = Math.min(toMs, date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli());

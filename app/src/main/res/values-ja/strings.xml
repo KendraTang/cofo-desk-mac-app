@@ -113,12 +113,14 @@
     <string name="error_fault">先にエラーを解除してください</string>
     <string name="error_height">高さがデスクの昇降範囲外です</string>
     <string name="error_limits_unknown">デスクの昇降範囲をまだ取得していないため移動できません</string>
-    <string name="error_time">経過時間は負にできません</string>
     <string name="error_save_preset">接続して停止してから高さを保存してください</string>
     <string name="error_slot">無効なメモリー番号です</string>
     <string name="error_profile">身長80–250 cm、体重20–300 kg、立位基準63–128 cmで入力してください</string>
     <string name="error_goals">目標と通知は0–1490分（24:50）、10分単位で指定してください（0で未設定・オフ）</string>
     <string name="error_reminder">タイマーは1–180分で指定してください</string>
+    <string name="fault_none">異常なし</string>
+    <string name="fault_device">デスクがエラー %1$s を報告しました</string>
+    <string name="fault_unknown">デスクが不明なエラー（%1$s）を報告しました</string>
     <string name="fault_collision">模擬障害物：停止しました</string>
     <string name="alert_standing">立ちすぎ通知：座って休憩しましょう</string>
     <string name="alert_sitting">座りすぎ通知：立って動きましょう</string>

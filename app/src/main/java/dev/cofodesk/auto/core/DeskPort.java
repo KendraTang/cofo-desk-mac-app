@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface DeskPort {
     enum Direction { UP, DOWN }
     /** One snapshot, so height and limits always describe the same moment. */
-    record State(boolean connected, int heightMm, boolean moving, boolean locked, String fault, Optional<TravelLimits> limits) {}
+    record State(boolean connected, int heightMm, boolean moving, boolean locked, Fault fault, Optional<TravelLimits> limits) {}
     State state();
     void connect();
     void disconnect();
