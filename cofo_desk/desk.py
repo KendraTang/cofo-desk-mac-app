@@ -79,7 +79,7 @@ class HeightSample:
 class Desk:
     def __init__(self, client, *, profile="auto", native_unit="auto", simulated=False,
                  connect_timeout=10.0, telemetry_timeout=3.0, init_interval=0.2,
-                 write_timeout=3.0, login_timeout=1.0, stop_record=None, clock=time.monotonic):
+                 write_timeout=3.0, login_timeout=1.0, stop_record=None, clock=time.monotonic, trace=None):
         self.client = client
         self.profile_name = profile
         self.native_unit = native_unit
@@ -92,6 +92,8 @@ class Desk:
         self.stops = stop_record if stop_record is not None else StopRecord()
         self.profile = self.writer = self.reader = None
         self.clock = clock
+        # Optional raw-traffic observer, called as trace(direction, uuid, data).
+        self.trace = trace
         self.height = self.reported_unit = self.limits = self.error = None
         self._write_lock = asyncio.Lock()
 
@@ -123,6 +125,8 @@ class Desk:
             raise DeskError("Device disconnected")
 
     def _receive(self, sender, data):
+        if self.trace:
+            self.trace("notify", getattr(sender, "uuid", str(sender)), bytes(data))
         for event in notification_events(bytes(data)):
             if event.kind == "height":
                 self.height = HeightSample(event.value, self.clock(), self._sequence() + 1)
@@ -166,6 +170,8 @@ class Desk:
         timeout = self.write_timeout if timeout is None else timeout
         async with self._write_lock:
             self.ensure_connected()
+            if self.trace:
+                self.trace("write", characteristic.uuid, bytes(data))
             try:
                 await asyncio.wait_for(self.client.write_gatt_char(
                     characteristic, data, response="write" in characteristic.properties), timeout)

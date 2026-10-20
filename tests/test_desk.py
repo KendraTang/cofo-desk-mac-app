@@ -98,6 +98,15 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
                 await desk.send_stop()
         self.assertFalse(desk.stops.attempted)
 
+    async def test_trace_sees_every_write_and_notification(self):
+        seen = []
+        peripheral = Peripheral()
+        async with self.desk(peripheral, trace=lambda *event: seen.append(event)) as desk:
+            await desk.prepare()
+        self.assertEqual(seen[0], ("write", peripheral.writer.uuid, QUERY_HEIGHT))
+        self.assertEqual(seen[1], ("notify", peripheral.reader.uuid, bytes.fromhex("F2F2010202D0")))
+        self.assertEqual(sum(1 for event in seen if event[0] == "write"), 6)
+
     async def test_write_without_response_and_conditional_login(self):
         peripheral = Peripheral(response=False)
         login = SimpleNamespace(uuid=LOGIN_CHARACTERISTIC, properties=["write-without-response"])

@@ -50,6 +50,8 @@ def parser():
                         help="override interpretation of incoming height fields")
     result.add_argument("--connect-timeout", type=bounded_number(60), default=10.0)
     result.add_argument("--telemetry-timeout", type=bounded_number(30), default=3.0)
+    result.add_argument("--trace", action="store_true",
+                        help="print raw GATT writes and notifications to stderr")
     result.add_argument("--login-timeout", type=bounded_number(10), default=1.0,
                         help="login write timeout for the standalone stop command")
     sub = result.add_subparsers(dest="command", required=True)
@@ -137,6 +139,10 @@ def bleak_module():
     return bleak
 
 
+def trace(direction, uuid, data):
+    print(f"TRACE {time.time():.3f} {direction} {uuid} {data.hex()}", file=sys.stderr, flush=True)
+
+
 async def run(args, stops=None):
     if args.command == "scan":
         if args.simulate:
@@ -161,7 +167,7 @@ async def run(args, stops=None):
     async with Desk(client, profile=args.profile, native_unit=args.native_unit, simulated=args.simulate,
                     connect_timeout=args.connect_timeout, telemetry_timeout=args.telemetry_timeout,
                     init_interval=0 if args.simulate else 0.2, login_timeout=args.login_timeout,
-                    stop_record=stops) as desk:
+                    stop_record=stops, trace=trace if args.trace else None) as desk:
         if args.command == "inspect":
             return Result(desk.inspect(), inspect_lines)
         if args.command == "stop":

@@ -71,6 +71,20 @@ APK：`app/build/outputs/apk/debug/app-debug.apk`，SHA-256：`66196ff744cc521d7
 - 已檢查安裝版 Bleak 的 `write_gatt_char`／`start_notify`／`discover` 簽名與目前呼叫相容。`cofo-desk --version` 輸出 0.1.0、`--help` 列出 8 個子指令。
 - 程序層測試涵蓋模擬狀態跨指令保存、毫米／公分／英吋目標、限時升降／停止、逾時後停止、Ctrl-C 結束碼 130、互斥檔案鎖、無效輸入及損壞狀態拒絕。BLE 入口使用獨立 GATT fixture／mock，不會碰觸實體桌。
 - 停止可靠性更新（2026-10-20）：當時 60 通過（之後輸出重構再加 1 個，現為 61）、0 失敗、0 跳過。新增 SIGTERM／SIGHUP／SIGINT 在移動中送 STOP 並分別以 143／129／130 結束、清理中重複訊號不中斷 STOP、STOP 與斷線同時失敗的回報、獨立 stop 的 STOP→登入→STOP 次序（無登入 service、登入閘門、登入卡住、中途斷線），以及模擬器拒收 checksum／結尾錯誤的目標封包。訊號測試使用 GATT fixture 與模擬裝置，沒有連真桌。
-- 真桌掃描、連線、登入、通知 framing、控制／停止及限位保證尚未驗證。此次 CLI 工作沒有變更 Android App。
+- 真桌首次連線見下一節；目標高度、STOP 在明顯移動中的效果與限位保證仍未驗證。此次 CLI 工作沒有變更 Android App。
 
 操作說明與控制限制見 [CLI 文件](cli.md)。
+
+## 真桌首次連線（2026-10-20）
+
+使用者在桌前監看，以 `--trace` 執行 [first-contact script](hardware-evidence/2026-10-20-first-contact.sh)，完整輸出見 [log](hardware-evidence/2026-10-20-first-contact.log)。協定細節整理在 [REA 調查的真桌觀察](reverse-engineering.md#真桌觀察2026-10-20)。
+
+| 步驟 | 結果 |
+| --- | --- |
+| `inspect` | 成功；`fe60` profile 與 Device Information service，沒有登入 service |
+| `status` | 高度 63.0 cm，面板顯示 63；單位 cm；上下限 630–1280 mm |
+| `stop` | 只送一次 STOP（沒有登入 service），寫入成功；桌子原本就靜止，無法觀察效果 |
+| `up --seconds 0.1` | 寫入一次 UP、160 ms 後 STOP；高度 630 → 631 mm，面板仍為 63 |
+| `down --seconds 0.1` | 高度 631 已在下限 630 的 1 mm 安全距離內，CLI 判定到達限位，只送 STOP，未送 DOWN |
+
+macOS 的藍牙權限屬於啟動終端機的 App；本次在權限生效前就已啟動的 tmux 內被拒絕，改在新開的 Ghostty 分頁執行。

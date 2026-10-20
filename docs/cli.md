@@ -87,7 +87,11 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 
 高度優先依 `--native-unit cm/in`，其次使用已回報單位，最後採原 App 的 raw 值門檻推斷（`>=550` 視為 cm）。輸出包含 `unit_source`，需要時明確覆寫。通知只解析原 App 已知且完整的欄位；未知／截斷資料不會補成有效高度，不虛構 checksum、跨通知重組或錯誤清除協定。這比原 App 嚴格：原 App 找到 `F201` 後，固定讀 length byte 之後的兩個 byte，不檢查宣告長度。例如 `F2F2010302D0` 宣告 3 byte、實際只有 2 byte，原 App 會顯示 72.0 cm，本工具則丟棄。若真桌確實會送這種封包，再依實機紀錄調整。錯誤在該連線內保留，重新連線不能據此判定實體故障已排除。
 
-`limits_mm` 把 `F2 F2 07` 的兩個值當成 mm。依據是原 App 在單位換算、進度計算與推薦高度三處都把它們當 mm 使用（見 [REA 調查](reverse-engineering.md)）；這是靜態推論，尚未用真桌面板對照。
+`limits_mm` 把 `F2 F2 07` 的兩個值當成 mm。依據是原 App 在單位換算、進度計算與推薦高度三處都把它們當 mm 使用（見 [REA 調查](reverse-engineering.md)）；2026-10-20 已在一張真桌上證實：桌子停在最低點時高度與下限同為 630。
+
+真桌的通知其實也帶 checksum 與 `7E` 結尾，而且偶爾會被拆成兩筆送達。目前 parser 仍逐筆解析、不驗 checksum、不重組，被拆開的高度會被丟棄（桌子會持續重送高度，所以影響有限）。
+
+`--trace` 會把每一筆 GATT 寫入與通知的原始 bytes 印到 stderr，格式為 `TRACE 時間 方向 UUID hex`，用於實機紀錄。
 
 連線預設最長 10 秒、通知訂閱及初始化後等待 telemetry 各預設 3 秒，可用 `--connect-timeout`（最多 60）及 `--telemetry-timeout`（最多 30）調整。單次寫入最長 3 秒。`stop` 不等 telemetry，但仍需連線與 GATT 探索成功。
 
