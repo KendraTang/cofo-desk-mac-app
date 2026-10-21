@@ -155,6 +155,16 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
             peripheral.notify(unit(True))
             self.assertEqual(desk.snapshot()["memory_mm"], {"M1": 2435.86, "M4": None})
 
+    async def test_refresh_keeps_limits_the_desk_does_not_resend(self):
+        # The real desk answers a single height query without limits and the limits query with memory.
+        peripheral = Peripheral()
+        async with self.desk(peripheral) as desk:
+            await desk.prepare(require_limits=True)
+            peripheral.limits_enabled = False
+            await desk.refresh()
+            self.assertEqual(desk.snapshot()["limits_mm"], [630, 1280])
+            self.assertEqual([packet for _, packet, _ in peripheral.sent][-2:], [QUERY_HEIGHT, QUERY_LIMITS])
+
     async def test_unit_report_override_and_error_are_not_guessed_away(self):
         peripheral = Peripheral()
         async with self.desk(peripheral) as desk:

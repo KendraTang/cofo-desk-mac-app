@@ -12,12 +12,13 @@ struct Options {
     var cofoDesk: String?
     var target: [String]?
     var desk = DeskSettings()
+    var traceDesk = false
 
     static let usage = """
         usage: timer-desk [--length SECONDS]... [--tolerance SECONDS] [--interval SECONDS]
                           [--cofo-desk PATH (--device UUID | --simulate-state FILE)]
                           [--stand SLOT] [--sit SLOT] [--nudge MM] [--window SECONDS]
-                          [--lower-after SECONDS]
+                          [--lower-after SECONDS] [--trace-desk]
           --length          timer length that raises the desk; repeatable (default 1500)
           --tolerance       allowed difference from a --length (default 3)
           --interval        poll interval (default 0.5, 0.2-2)
@@ -26,6 +27,7 @@ struct Options {
           --nudge           warning jog in mm (default 20, 5-50)
           --window          cancel window after the jog (default 10, 3-60)
           --lower-after     lower an automatic raise after this long (default 900, 10-7200)
+          --trace-desk      log every raw GATT write and notification (cofo-desk --trace)
         With a desk, the agent stays connected through `cofo-desk session` and checks the
         connection when a matching timer has 15 s left. For testing, SIGUSR1 requests a raise
         and SIGUSR2 moves a scheduled lower to now.
@@ -38,6 +40,10 @@ struct Options {
             Double(text).flatMap { range.contains($0) ? $0 : nil }
         }
         while let flag = rest.popFirst() {
+            if flag == "--trace-desk" {
+                options.traceDesk = true
+                continue
+            }
             guard flag != "--help", let text = rest.popFirst() else { return nil }
             switch flag {
             case "--length":
@@ -171,7 +177,7 @@ final class Agent {
         policy = TriggerPolicy(lengths: options.lengths, tolerance: options.tolerance)
         if let executable = options.cofoDesk, let target = options.target {
             coordinator = DeskCoordinator(settings: options.desk)
-            session = DeskSession(executable: executable, target: target) { [unowned self] input in self.apply(input) }
+            session = DeskSession(executable: executable, target: target + (options.traceDesk ? ["--trace"] : [])) { [unowned self] input in self.apply(input) }
         }
     }
 
