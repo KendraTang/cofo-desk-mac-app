@@ -189,7 +189,12 @@ final class Agent {
             switch output {
             case let .run(command): session?.run(command)
             case .cancelCommand: session?.cancel()
-            case let .note(name): emit(["event": name])
+            case let .note(name):
+                emit(["event": name])
+                if name == "raised", let due = coordinator.lowerDue {
+                    let at = Date(timeIntervalSinceNow: due.at - ProcessInfo.processInfo.systemUptime)
+                    emit(["event": "lower-scheduled", "due": timestamp.string(from: at), "raised_mm": due.raisedMm])
+                }
             case let .notifyFailure(message):
                 emit(["event": "failure-notified", "message": message])
                 notifyFailure(message)
