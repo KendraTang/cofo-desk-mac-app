@@ -46,6 +46,27 @@ python3 -m venv .venv
 
 支援 scan／inspect／status／watch／up／down／goto／stop、JSON 與有界操作。共用選項放在子指令之前。使用方式、停止語意與實機限制見 [CLI 文件](docs/cli.md)。
 
+## Clock 番茄鐘自動升降（Mac）
+
+Clock 的 25 分鐘計時自然完成時，先點動預告，3 秒內沒按面板鍵就升到 M1；15 分鐘後沒動過就降回 M2。規則見 [規格](docs/timer-desk.md)。需要先裝好上面的 `.venv`。以下指令都要在一般終端機執行，不要在 tmux 裡，否則簽署時讀不到鑰匙圈。
+
+```sh
+scripts/create-signing-identity.sh    # 只需一次：建立本機簽署身分，重新編譯後權限才不會失效
+timer-desk/install.sh --cofo-desk "$PWD/.venv/bin/cofo-desk" --device <桌子 UUID>
+```
+
+`install.sh` 會編譯、簽署、停掉舊版再載入 LaunchAgent，更新時直接重跑即可，不必先移除。重裝會取消還沒執行的下降，也不認得正在倒數的計時器，最好在兩個番茄鐘之間進行。第一次執行時 macOS 會要求輔助使用和藍牙權限。
+
+```sh
+launchctl print gui/$(id -u)/dev.cofodesk.timer-desk | grep -m1 'state ='    # running 表示在監控
+grep -v TRACE ~/Library/Logs/timer-desk.log | tail -5                        # 最近的事件
+grep lower-scheduled ~/Library/Logs/timer-desk.log | tail -1                 # 下次自動下降的時間
+timer-desk/uninstall.sh                                                      # 停止並移除
+timer-desk/test.sh                                                           # 單元測試
+```
+
+常駐連線期間，手機 App 通常連不上桌子。
+
 ## 執行
 
 需求：JDK 21、Android SDK（platform 36）、已啟動的 Android AVD。`minSdk` 為 26，目前執行期驗證為 API 36。設定 `ANDROID_HOME` 指向你的 SDK。
