@@ -4,9 +4,9 @@ public struct DeskSettings: Sendable {
     public var standSlot = "M1"
     public var sitSlot = "M2"
     /// Warning jog before a move, in mm.
-    public var nudgeMm = 20
+    public var nudgeMm = 10
     /// How long a panel key press can cancel the move after the warning jog.
-    public var windowSeconds = 10.0
+    public var windowSeconds = 3.0
     /// When an automatic raise is followed by an automatic lower.
     public var lowerAfterSeconds = 900.0
     /// Within this of the stand height counts as already standing.

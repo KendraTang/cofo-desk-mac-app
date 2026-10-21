@@ -24,8 +24,8 @@ struct Options {
           --interval        poll interval (default 0.5, 0.2-2)
           --cofo-desk       cofo-desk executable; with --device or --simulate-state the desk moves
           --stand, --sit    panel memory slots (default M1, M2)
-          --nudge           warning jog in mm (default 20, 5-50)
-          --window          cancel window after the jog (default 10, 3-60)
+          --nudge           warning jog in mm (default 10, 5-50)
+          --window          cancel window after the jog (default 3, 3-60)
           --lower-after     lower an automatic raise after this long (default 900, 10-7200)
           --trace-desk      log every raw GATT write and notification (cofo-desk --trace)
         With a desk, the agent stays connected through `cofo-desk session` and checks the

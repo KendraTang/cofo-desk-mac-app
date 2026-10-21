@@ -11,8 +11,8 @@ private func sitting(_ height: Int = 631) -> CoordinatorInput {
 private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     _ = coordinator.handle(.raiseRequested, now: now)
     _ = coordinator.handle(sitting(), now: now)
-    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: now)
-    _ = coordinator.handle(.watchSample(heightMm: 651), now: now)
+    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: now)
+    _ = coordinator.handle(.watchSample(heightMm: 641), now: now)
     _ = coordinator.handle(.watchFinished, now: now)
     _ = coordinator.handle(.gotoFinished(heightMm: 959), now: now)
 }
@@ -20,10 +20,10 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
 @Test func raiseJogsWaitsThenMovesToStandAndSchedulesLower() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     #expect(coordinator.handle(.raiseRequested, now: 0) == [.run(.status)])
-    #expect(coordinator.handle(sitting(), now: 1) == [.run(.goto(mm: 651))])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 651), now: 3) == [.run(.watch(seconds: 10))])
-    #expect(coordinator.handle(.watchSample(heightMm: 651), now: 4) == [])
-    #expect(coordinator.handle(.watchSample(heightMm: 653), now: 5) == [])
+    #expect(coordinator.handle(sitting(), now: 1) == [.run(.goto(mm: 641))])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 641), now: 3) == [.run(.watch(seconds: 3))])
+    #expect(coordinator.handle(.watchSample(heightMm: 641), now: 4) == [])
+    #expect(coordinator.handle(.watchSample(heightMm: 643), now: 5) == [])
     #expect(coordinator.handle(.watchFinished, now: 14) == [.run(.goto(mm: 959))])
     #expect(coordinator.handle(.gotoFinished(heightMm: 959), now: 25) == [.note("raised")])
     #expect(coordinator.phase == .idle)
@@ -35,9 +35,9 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     _ = coordinator.handle(.raiseRequested, now: 0)
     _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
-    _ = coordinator.handle(.watchSample(heightMm: 651), now: 0)
-    #expect(coordinator.handle(.watchSample(heightMm: 640), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
+    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
+    _ = coordinator.handle(.watchSample(heightMm: 641), now: 0)
+    #expect(coordinator.handle(.watchSample(heightMm: 630), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
     // The cancelled watch's own result arrives afterwards and is ignored.
     #expect(coordinator.handle(.commandFailed("Interrupted by SIGTERM"), now: 2) == [])
     #expect(coordinator.handle(.watchFinished, now: 2) == [])
@@ -49,7 +49,7 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     _ = coordinator.handle(.raiseRequested, now: 0)
     _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
+    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
     #expect(coordinator.handle(.watchSample(heightMm: 631), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
 }
 
@@ -90,9 +90,9 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     raise(&coordinator)
     #expect(coordinator.handle(.tick, now: 899) == [])
     #expect(coordinator.handle(.tick, now: 900) == [.run(.status)])
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 901) == [.run(.goto(mm: 938))])
-    _ = coordinator.handle(.gotoFinished(heightMm: 938), now: 902)
-    _ = coordinator.handle(.watchSample(heightMm: 938), now: 903)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 901) == [.run(.goto(mm: 948))])
+    _ = coordinator.handle(.gotoFinished(heightMm: 948), now: 902)
+    _ = coordinator.handle(.watchSample(heightMm: 948), now: 903)
     #expect(coordinator.handle(.watchFinished, now: 912) == [.run(.goto(mm: 631))])
     #expect(coordinator.handle(.gotoFinished(heightMm: 631), now: 920) == [.note("lowered")])
     #expect(coordinator.lowerDue == nil)
@@ -121,8 +121,8 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     _ = coordinator.handle(.raiseRequested, now: 0)
     _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
-    _ = coordinator.handle(.watchSample(heightMm: 651), now: 1)
+    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
+    _ = coordinator.handle(.watchSample(heightMm: 641), now: 1)
     _ = coordinator.handle(.watchFinished, now: 10)
     #expect(coordinator.handle(.commandFailed("Height telemetry is stale; movement stopped"), now: 30) == [
         .note("raise-failed"),
@@ -139,7 +139,7 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     _ = coordinator.handle(.raiseRequested, now: 2000)
     _ = coordinator.handle(sitting(), now: 2000)
     #expect(coordinator.handle(.screenLocked, now: 2001) == [.cancelCommand, .note("aborted-screen-locked")])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 651), now: 2002) == [])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 641), now: 2002) == [])
 }
 
 @Test func raiseRequestWhileBusyIsSkipped() {
@@ -152,7 +152,7 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     _ = coordinator.handle(.raiseRequested, now: 0)
     _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
+    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
     #expect(coordinator.handle(.watchFinished, now: 10) == [
         .note("raise-failed"), .notifyFailure("升桌失敗：no height during the cancel window"),
     ])
