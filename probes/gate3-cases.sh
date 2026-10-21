@@ -1,7 +1,7 @@
 #!/bin/bash
-# Gate 3 walkthrough on the real desk. Install the agent first, from the repo root:
-#   timer-desk/install.sh --length 10 --length 1500 \
-#     --cofo-desk "$PWD/.venv/bin/cofo-desk" --device 24793885-E0D3-DAA3-9DD8-4271F4793A63
+# Gate 3 walkthrough on the real desk. Rebuilds and reinstalls the agent (with desk tracing),
+# waits for its desk connection, then runs the cases. Run it from a regular terminal, not tmux,
+# so codesign can reach the keychain.
 # Most cases trigger the agent with signals instead of waiting for Clock: SIGUSR1 requests a
 # raise, SIGUSR2 runs the scheduled lower now. Before each case: clear the desk top and keep a
 # hand near the panel; any panel key stops a move.
@@ -16,9 +16,23 @@ case_start() { echo; echo "== $1"; echo "   $2"; wait_enter "Press Enter to star
 raise() { launchctl kill SIGUSR1 "$SERVICE"; echo "   Raise requested."; }
 lower_now() { launchctl kill SIGUSR2 "$SERVICE"; echo "   Lower requested."; }
 
-launchctl print "$SERVICE" >/dev/null 2>&1 || { echo "Agent not loaded; install it first (see the top of this script)."; exit 1; }
-grep -q desk-session-ready "$LOG" || echo "Warning: the log has no desk-session-ready yet; check Bluetooth access and the phone app."
 echo "Close the phone COFO app. Start with the desk at M2 (sitting)."
+wait_enter "Press Enter to rebuild and reinstall the agent."
+REPO="$(cd "$DIR/.." && pwd)"
+LINES=$(wc -l < "$LOG" 2>/dev/null || echo 0)
+"$REPO/timer-desk/install.sh" --length 10 --length 1500 --trace-desk \
+    --cofo-desk "$REPO/.venv/bin/cofo-desk" --device 24793885-E0D3-DAA3-9DD8-4271F4793A63 || exit 1
+echo "Waiting up to 30 s for the desk connection..."
+for _ in $(seq 30); do
+    tail -n +$((LINES + 1)) "$LOG" | grep -q desk-session-ready && break
+    sleep 1
+done
+if ! tail -n +$((LINES + 1)) "$LOG" | grep -q desk-session-ready; then
+    echo "The agent did not connect to the desk. Stopping here; recent log:"
+    tail -n +$((LINES + 1)) "$LOG" | grep -v TRACE | tail -5
+    exit 1
+fi
+echo "Connected."
 
 case_start 1-raise-and-lower "Expect: 2 cm jog up at once, 10 s pause, rise to M1. Then, when you press Enter again: 2 cm jog down, 10 s pause, back to M2."
 raise
