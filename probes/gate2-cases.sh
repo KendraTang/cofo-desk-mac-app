@@ -6,7 +6,12 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG="$HOME/Library/Logs/timer-desk.log"
 LABEL=dev.cofodesk.timer-desk
 mark() { printf '{"event":"case","case":"%s","time":"%s"}\n' "$1" "$(date '+%Y-%m-%dT%H:%M:%S%z')" >> "$LOG"; }
-step() { echo; echo "== $1"; echo "   $2"; read -r -p "   Press Enter to start this case. " _ < /dev/tty; mark "$1"; read -r -p "   Press Enter when done. " _ < /dev/tty; }
+step() {
+    echo; echo "== $1"; echo "   Next: $2"
+    read -r -p "   Press Enter first, then do it in Clock. " _ < /dev/tty
+    mark "$1"
+    read -r -p "   Press Enter when the case is done. " _ < /dev/tty
+}
 
 launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || { echo "Agent not loaded; run timer-desk/install.sh first."; exit 1; }
 
