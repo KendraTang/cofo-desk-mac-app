@@ -12,3 +12,5 @@ dist/
 probes/out/ax-[0-9]*.txt
 probes/out/perm-probe
 probes/out/dev.cofodesk.*
+timer-desk/.build/
+timer-desk/bin/

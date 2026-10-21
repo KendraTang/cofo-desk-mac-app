@@ -63,6 +63,17 @@ Clock（外部，計時的唯一依據）
 
 偵測和桌子控制分開。單元測試使用假的計時觀測和 `cofo-desk --simulate`；整合測試才連真桌。
 
+程式在 [`timer-desk/`](../timer-desk)：
+
+```sh
+timer-desk/test.sh                                 # 單元測試（含用真實紀錄重播）
+timer-desk/install.sh --length 10 --length 1500    # 編譯、簽署並載入 LaunchAgent
+tail -f ~/Library/Logs/timer-desk.log              # JSON Lines 事件紀錄
+timer-desk/uninstall.sh                            # 停止並移除 LaunchAgent
+```
+
+Gate 2 版本只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因，不呼叫桌子。新的執行檔第一次啟動時，要在「輔助使用」清單中允許 `timer-desk`。
+
 ## Gate 1 可行性
 
 環境：macOS 26.6.2（25G83）、arm64、Swift 6.3.2（只有 Command Line Tools，沒有 Xcode）、repo 的 `.venv`。系統語言為 `en-TW`。
