@@ -1,0 +1,366 @@
+===== start 13:31:06
+Recording 60 s. On the panel: press M1, wait until it stops; press M2, wait until it stops;
+then hold UP about 1 s. Type the panel height after each stop into the notes below.
+TRACE 1792560668.898 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10c000c7e
+TRACE 1792560669.259 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560669.347 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560669.459 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10c000c7e
+TRACE 1792560669.528 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560669.619 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2070405000276887e
+TRACE 1792560669.707 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560669.819 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10c000c7e
+TRACE 1792560669.979 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560669.979 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2070405000276887e
+TRACE 1792560670.157 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560670.338 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560670.381 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10700077e
+TRACE 1792560670.521 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2250203bfe97e
+TRACE 1792560670.521 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f226020277a17e
+TRACE 1792560670.608 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2270205002e7e
+TRACE 1792560670.609 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2280200002a7e
+TRACE 1792560670.699 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20e01000f7ef2f21901001a7ef2f2170101197ef2f21d0102207ef2f20103027707847e
+TRACE 1792560670.720 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10700077e
+TRACE 1792560670.879 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2250203bfe97e
+TRACE 1792560670.880 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f226020277a17e
+TRACE 1792560670.968 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2270205002e7e
+TRACE 1792560670.968 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2280200002a7e
+TRACE 1792560671.060 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20e01000f7ef2f21901001a7ef2f2170101197ef2f21d0102207ef2f20103027707847e
+TRACE 1792560671.079 write 0000fe61-0000-1000-8000-00805f9b34fb f1f10700077e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.179, "error": null}
+TRACE 1792560671.240 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2250203bfe97e
+TRACE 1792560671.240 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f226020277a17e
+TRACE 1792560671.328 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2270205002e7e
+TRACE 1792560671.328 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2280200002a7e
+TRACE 1792560671.420 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20e01000f7ef2f21901001a7ef2f2170101197ef2f21d0102207ef2f20103027707847e
+TRACE 1792560671.599 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.141, "error": null}
+TRACE 1792560671.777 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560671.957 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560672.229 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.012, "error": null}
+TRACE 1792560672.407 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560672.677 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.066, "error": null}
+TRACE 1792560672.768 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560673.128 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560673.217 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.027, "error": null}
+TRACE 1792560673.398 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560673.577 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.169, "error": null}
+TRACE 1792560673.937 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560674.027 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.219, "error": null}
+TRACE 1792560674.297 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560674.387 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560674.658 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.09, "error": null}
+TRACE 1792560674.837 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560675.017 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560675.197 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.053, "error": null}
+TRACE 1792560675.467 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.284, "error": null}
+TRACE 1792560675.828 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560675.829 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560676.097 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.155, "error": null}
+TRACE 1792560676.277 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560676.638 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560676.639 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.115, "error": null}
+TRACE 1792560676.817 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560677.088 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.168, "error": null}
+TRACE 1792560677.267 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560677.449 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560677.627 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.129, "error": null}
+TRACE 1792560677.899 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560678.078 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560678.257 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.0, "error": null}
+TRACE 1792560678.438 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560678.707 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.05, "error": null}
+TRACE 1792560678.978 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.281, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.782, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 1.283, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 1.785, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 2.286, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 2.788, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 3.289, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 3.79, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 4.292, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 4.793, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 5.295, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 5.796, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 6.297, "error": null}
+TRACE 1792560683.410 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.139, "error": null}
+TRACE 1792560683.590 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560683.770 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027807857e
+TRACE 1792560683.950 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027b07887e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 635, "height_cm": 63.5, "height_in": 25.0, "raw_height": 635, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.1, "error": null}
+TRACE 1792560684.129 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030280078d7e
+TRACE 1792560684.399 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028707947e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 647, "height_cm": 64.7, "height_in": 25.47, "raw_height": 647, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.153, "error": null}
+TRACE 1792560684.579 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028e079b7e
+TRACE 1792560684.760 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029507a27e
+TRACE 1792560684.939 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029c07a97e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 668, "height_cm": 66.8, "height_in": 26.3, "raw_height": 668, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.114, "error": null}
+TRACE 1792560685.209 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a407b17e
+TRACE 1792560685.389 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302ac07b97e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 684, "height_cm": 68.4, "height_in": 26.93, "raw_height": 684, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.165, "error": null}
+TRACE 1792560685.569 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302b307c07e
+TRACE 1792560685.839 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302ba07c77e
+TRACE 1792560686.019 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302c207cf7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 706, "height_cm": 70.6, "height_in": 27.8, "raw_height": 706, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.036, "error": null}
+TRACE 1792560686.291 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302c907d67e
+TRACE 1792560686.469 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302d107de7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 721, "height_cm": 72.1, "height_in": 28.39, "raw_height": 721, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.087, "error": null}
+TRACE 1792560686.649 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302d807e57e
+TRACE 1792560686.919 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302e007ed7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 736, "height_cm": 73.6, "height_in": 28.98, "raw_height": 736, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.139, "error": null}
+TRACE 1792560687.099 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302e707f47e
+TRACE 1792560687.279 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302ef07fc7e
+TRACE 1792560687.549 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302f607037e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 758, "height_cm": 75.8, "height_in": 29.84, "raw_height": 758, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.01, "error": null}
+TRACE 1792560687.730 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302fe070b7e
+TRACE 1792560687.910 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103030507137e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 773, "height_cm": 77.3, "height_in": 30.43, "raw_height": 773, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.151, "error": null}
+TRACE 1792560688.179 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103030d071b7e
+TRACE 1792560688.448 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103031407227e
+TRACE 1792560688.539 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103031c072a7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 796, "height_cm": 79.6, "height_in": 31.34, "raw_height": 796, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.023, "error": null}
+TRACE 1792560688.810 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103032307317e
+TRACE 1792560688.989 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103032b07397e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 811, "height_cm": 81.1, "height_in": 31.93, "raw_height": 811, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.074, "error": null}
+TRACE 1792560689.169 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103033207407e
+TRACE 1792560689.438 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103033a07487e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 826, "height_cm": 82.6, "height_in": 32.52, "raw_height": 826, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.126, "error": null}
+TRACE 1792560689.618 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030341074f7e
+TRACE 1792560689.890 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103034907577e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 841, "height_cm": 84.1, "height_in": 33.11, "raw_height": 841, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.181, "error": null}
+TRACE 1792560690.071 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030350075e7e
+TRACE 1792560690.251 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103035807667e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 856, "height_cm": 85.6, "height_in": 33.7, "raw_height": 856, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.32, "error": null}
+TRACE 1792560690.609 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103035f076d7e
+TRACE 1792560690.699 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103036707757e
+TRACE 1792560690.879 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103036e077c7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 878, "height_cm": 87.8, "height_in": 34.57, "raw_height": 878, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.193, "error": null}
+TRACE 1792560691.148 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103037607847e
+TRACE 1792560691.420 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103037d078b7e
+TRACE 1792560691.509 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103038507937e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 901, "height_cm": 90.1, "height_in": 35.47, "raw_height": 901, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.065, "error": null}
+TRACE 1792560691.779 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103038c079a7e
+TRACE 1792560691.959 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103039407a27e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 916, "height_cm": 91.6, "height_in": 36.06, "raw_height": 916, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.116, "error": null}
+TRACE 1792560692.138 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103039b07a97e
+TRACE 1792560692.409 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303a307b17e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 931, "height_cm": 93.1, "height_in": 36.65, "raw_height": 931, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.167, "error": null}
+TRACE 1792560692.589 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303aa07b87e
+TRACE 1792560692.769 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303b107bf7e
+TRACE 1792560693.039 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303b507c37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 949, "height_cm": 94.9, "height_in": 37.36, "raw_height": 949, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.039, "error": null}
+TRACE 1792560693.219 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303b807c67e
+TRACE 1792560693.399 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bc07ca7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 956, "height_cm": 95.6, "height_in": 37.64, "raw_height": 956, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.18, "error": null}
+TRACE 1792560693.669 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560693.849 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560694.029 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 959, "height_cm": 95.9, "height_in": 37.76, "raw_height": 959, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.051, "error": null}
+TRACE 1792560694.389 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560694.568 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 959, "height_cm": 95.9, "height_in": 37.76, "raw_height": 959, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.013, "error": null}
+TRACE 1792560694.750 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560694.929 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 959, "height_cm": 95.9, "height_in": 37.76, "raw_height": 959, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.154, "error": null}
+TRACE 1792560695.109 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560695.378 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+TRACE 1792560695.558 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bf07cd7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 959, "height_cm": 95.9, "height_in": 37.76, "raw_height": 959, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.026, "error": null}
+TRACE 1792560695.740 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303bd07cb7e
+TRACE 1792560696.008 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303ba07c87e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 954, "height_cm": 95.4, "height_in": 37.56, "raw_height": 954, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.076, "error": null}
+TRACE 1792560696.189 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303b407c27e
+TRACE 1792560696.369 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303ad07bb7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 941, "height_cm": 94.1, "height_in": 37.05, "raw_height": 941, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.217, "error": null}
+TRACE 1792560696.638 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010303a607b47e
+TRACE 1792560696.908 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103039e07ac7e
+TRACE 1792560696.998 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103039707a57e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 919, "height_cm": 91.9, "height_in": 36.18, "raw_height": 919, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.09, "error": null}
+TRACE 1792560697.358 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103038f079d7e
+TRACE 1792560697.448 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103038807967e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 904, "height_cm": 90.4, "height_in": 35.59, "raw_height": 904, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.141, "error": null}
+TRACE 1792560697.717 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030380078e7e
+TRACE 1792560697.898 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103037907877e
+TRACE 1792560698.078 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030371077f7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 881, "height_cm": 88.1, "height_in": 34.69, "raw_height": 881, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.012, "error": null}
+TRACE 1792560698.258 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103036a07787e
+TRACE 1792560698.528 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103036207707e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 866, "height_cm": 86.6, "height_in": 34.09, "raw_height": 866, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.063, "error": null}
+TRACE 1792560698.708 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103035b07697e
+TRACE 1792560698.978 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103035307617e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 851, "height_cm": 85.1, "height_in": 33.5, "raw_height": 851, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.114, "error": null}
+TRACE 1792560699.248 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103034c075a7e
+TRACE 1792560699.338 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103034407527e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 836, "height_cm": 83.6, "height_in": 32.91, "raw_height": 836, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.256, "error": null}
+TRACE 1792560699.608 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103033d074b7e
+TRACE 1792560699.789 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103033507437e
+TRACE 1792560699.968 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103032e073c7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 814, "height_cm": 81.4, "height_in": 32.05, "raw_height": 814, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.126, "error": null}
+TRACE 1792560700.328 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103032607347e
+TRACE 1792560700.419 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103031f072d7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 799, "height_cm": 79.9, "height_in": 31.46, "raw_height": 799, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.176, "error": null}
+TRACE 1792560700.598 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103031707257e
+TRACE 1792560700.868 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030310071e7e
+TRACE 1792560701.048 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103030807167e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 776, "height_cm": 77.6, "height_in": 30.55, "raw_height": 776, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.048, "error": null}
+TRACE 1792560701.228 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030301070f7e
+TRACE 1792560701.498 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302f907067e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 761, "height_cm": 76.1, "height_in": 29.96, "raw_height": 761, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.099, "error": null}
+TRACE 1792560701.678 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302f207ff7e
+TRACE 1792560701.858 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302ea07f77e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 746, "height_cm": 74.6, "height_in": 29.37, "raw_height": 746, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.241, "error": null}
+TRACE 1792560702.128 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302e307f07e
+TRACE 1792560702.308 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302db07e87e
+TRACE 1792560702.580 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302d407e17e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 724, "height_cm": 72.4, "height_in": 28.5, "raw_height": 724, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.021, "error": null}
+TRACE 1792560702.758 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302cc07d97e
+TRACE 1792560702.938 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302c507d27e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 709, "height_cm": 70.9, "height_in": 27.91, "raw_height": 709, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.164, "error": null}
+TRACE 1792560703.208 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302bd07ca7e
+TRACE 1792560703.389 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302b607c37e
+TRACE 1792560703.568 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302ae07bb7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 686, "height_cm": 68.6, "height_in": 27.01, "raw_height": 686, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.035, "error": null}
+TRACE 1792560703.838 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a707b47e
+TRACE 1792560704.018 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029f07ac7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 671, "height_cm": 67.1, "height_in": 26.42, "raw_height": 671, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.088, "error": null}
+TRACE 1792560704.198 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029807a57e
+TRACE 1792560704.468 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030291079e7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 657, "height_cm": 65.7, "height_in": 25.87, "raw_height": 657, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.138, "error": null}
+TRACE 1792560704.738 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028907967e
+TRACE 1792560704.828 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028407917e
+TRACE 1792560705.098 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030280078d7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 640, "height_cm": 64.0, "height_in": 25.2, "raw_height": 640, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.01, "error": null}
+TRACE 1792560705.279 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027d078a7e
+TRACE 1792560705.458 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027907867e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 633, "height_cm": 63.3, "height_in": 24.92, "raw_height": 633, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.151, "error": null}
+TRACE 1792560705.728 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560705.998 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560706.088 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.023, "error": null}
+TRACE 1792560706.358 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560706.538 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.074, "error": null}
+TRACE 1792560706.808 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560706.988 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.126, "error": null}
+TRACE 1792560707.168 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560707.437 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.178, "error": null}
+TRACE 1792560707.617 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560707.799 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027707847e
+TRACE 1792560708.068 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027807857e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 632, "height_cm": 63.2, "height_in": 24.88, "raw_height": 632, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.049, "error": null}
+TRACE 1792560708.248 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103027b07887e
+TRACE 1792560708.428 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f201030280078d7e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 640, "height_cm": 64.0, "height_in": 25.2, "raw_height": 640, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.191, "error": null}
+TRACE 1792560708.698 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028707947e
+TRACE 1792560708.877 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103028e079b7e
+TRACE 1792560709.058 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029607a37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 662, "height_cm": 66.2, "height_in": 26.06, "raw_height": 662, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.061, "error": null}
+TRACE 1792560709.328 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f20103029d07aa7e
+TRACE 1792560709.507 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a307b07e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 675, "height_cm": 67.5, "height_in": 26.57, "raw_height": 675, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.113, "error": null}
+TRACE 1792560709.687 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560709.958 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.163, "error": null}
+TRACE 1792560710.137 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560710.318 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560710.587 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.035, "error": null}
+TRACE 1792560710.767 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560711.037 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.086, "error": null}
+TRACE 1792560711.217 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560711.399 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.226, "error": null}
+TRACE 1792560711.667 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560711.847 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560712.027 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.1, "error": null}
+TRACE 1792560712.297 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560712.478 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.15, "error": null}
+TRACE 1792560712.657 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560713.017 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560713.109 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.019, "error": null}
+TRACE 1792560713.287 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560713.467 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.163, "error": null}
+TRACE 1792560713.738 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560713.917 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560714.097 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.035, "error": null}
+TRACE 1792560714.279 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560714.547 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.086, "error": null}
+TRACE 1792560714.728 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560714.907 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560715.087 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.047, "error": null}
+TRACE 1792560715.356 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560715.537 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.098, "error": null}
+TRACE 1792560715.717 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560715.897 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.239, "error": null}
+TRACE 1792560716.167 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560716.347 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560716.526 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.112, "error": null}
+TRACE 1792560716.707 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560716.976 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.163, "error": null}
+TRACE 1792560717.156 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560717.337 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560717.517 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.124, "error": null}
+TRACE 1792560717.787 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560717.967 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.174, "error": null}
+TRACE 1792560718.147 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560718.327 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.316, "error": null}
+TRACE 1792560718.687 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560718.777 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+TRACE 1792560718.957 notify 0000fe62-0000-1000-8000-00805f9b34fb f2f2010302a607b37e
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.186, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.688, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 1.189, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 1.69, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 2.191, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 2.692, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 3.194, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 3.695, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 4.196, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 4.697, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 5.199, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 5.7, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 6.201, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 6.703, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 7.204, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 7.706, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 8.207, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 8.708, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 9.209, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 9.71, "error": null}
+{"simulated": false, "connected": true, "profile": "fe60", "height_mm": 678, "height_cm": 67.8, "height_in": 26.69, "raw_height": 678, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 10.052, "error": null}
+rc=0
+Panel height after M1? ANSWER[M1] 96
+Panel height after M2? ANSWER[M2] 63
+===== end 13:33:25

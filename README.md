@@ -89,5 +89,6 @@ python3 -m unittest discover -s tests -v
 | [BLE 接入](docs/protocol.md) | 可用診斷、官方藍牙啟用方式、封包調查與真桌驗收條件 |
 | [命令列工具](docs/cli.md) | 安裝、BLE／模擬操作、JSON、停止語意與測試 |
 | [後續自動化](docs/automation.md) | 坐站週期、工作時段、手動確認、捷徑與自動 session 的順序和驗收 |
+| [Clock 計時器自動升降桌](docs/timer-desk.md) | Mac 上 Clock 番茄鐘完成後點動預告、升降規則、安全條件與可行性紀錄 |
 
 已依 REA 的原 App 熱量公式與期間截斷方式更新計算。模擬預設值、記憶長按手勢、可調站立門檻與前景統計仍有相容性差異，詳見架構及功能盤點。硬體相容性另行驗收。
