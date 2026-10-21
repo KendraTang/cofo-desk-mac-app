@@ -1,5 +1,6 @@
-// Gate 2 agent: polls Control Center's timer menu extra and logs timer events and what it would do
-// with the desk as JSON lines on stdout. It never moves the desk.
+// Polls Control Center's timer menu extra and, when a matching Clock timer finishes, raises the
+// desk through cofo-desk (warning jog, cancel window, move to the stand slot), then lowers it later.
+// Without --device or --simulate-state it only logs what it would do. Logs are JSON lines on stdout.
 import AppKit
 import ApplicationServices
 import TimerDeskCore
@@ -8,18 +9,38 @@ struct Options {
     var lengths: [Int] = []
     var tolerance = 3
     var interval = 0.5
+    var cofoDesk: String?
+    var target: [String]?
+    var desk = DeskSettings()
+    var testRaise = false
 
     static let usage = """
         usage: timer-desk [--length SECONDS]... [--tolerance SECONDS] [--interval SECONDS]
-          --length     timer length that raises the desk; repeatable (default 1500)
-          --tolerance  allowed difference from a --length (default 3)
-          --interval   poll interval (default 0.5, 0.2-2)
+                          [--cofo-desk PATH (--device UUID | --simulate-state FILE)]
+                          [--stand SLOT] [--sit SLOT] [--nudge MM] [--window SECONDS]
+                          [--lower-after SECONDS] [--test-raise]
+          --length          timer length that raises the desk; repeatable (default 1500)
+          --tolerance       allowed difference from a --length (default 3)
+          --interval        poll interval (default 0.5, 0.2-2)
+          --cofo-desk       cofo-desk executable; with --device or --simulate-state the desk moves
+          --stand, --sit    panel memory slots (default M1, M2)
+          --nudge           warning jog in mm (default 20, 5-50)
+          --window          cancel window after the jog (default 10, 3-60)
+          --lower-after     lower an automatic raise after this long (default 900, 10-7200)
+          --test-raise      run one raise right after start (for testing)
         """
 
     static func parse(_ arguments: [String]) -> Options? {
         var options = Options()
         var rest = arguments[...]
+        func number(_ text: String, _ range: ClosedRange<Double>) -> Double? {
+            Double(text).flatMap { range.contains($0) ? $0 : nil }
+        }
         while let flag = rest.popFirst() {
+            if flag == "--test-raise" {
+                options.testRaise = true
+                continue
+            }
             guard flag != "--help", let text = rest.popFirst() else { return nil }
             switch flag {
             case "--length":
@@ -29,13 +50,36 @@ struct Options {
                 guard let value = Int(text), value >= 0 else { return nil }
                 options.tolerance = value
             case "--interval":
-                guard let value = Double(text), (0.2...2).contains(value) else { return nil }
+                guard let value = number(text, 0.2...2) else { return nil }
                 options.interval = value
+            case "--cofo-desk":
+                options.cofoDesk = text
+            case "--device":
+                guard options.target == nil else { return nil }
+                options.target = ["--device", text]
+            case "--simulate-state":
+                guard options.target == nil else { return nil }
+                options.target = ["--simulate", "--state-file", text]
+            case "--stand", "--sit":
+                guard text.range(of: "^M[1-4]$", options: .regularExpression) != nil else { return nil }
+                if flag == "--stand" { options.desk.standSlot = text } else { options.desk.sitSlot = text }
+            case "--nudge":
+                guard let value = Int(text), (5...50).contains(value) else { return nil }
+                options.desk.nudgeMm = value
+            case "--window":
+                guard let value = number(text, 3...60) else { return nil }
+                options.desk.windowSeconds = value
+            case "--lower-after":
+                guard let value = number(text, 10...7200) else { return nil }
+                options.desk.lowerAfterSeconds = value
             default:
                 return nil
             }
         }
         if options.lengths.isEmpty { options.lengths = [1500] }
+        guard (options.cofoDesk == nil) == (options.target == nil), !options.testRaise || options.target != nil,
+              options.desk.standSlot != options.desk.sitSlot
+        else { return nil }
         return options
     }
 }
@@ -119,9 +163,32 @@ final class Agent {
     private var tracker = TimerTracker()
     private var lastFailure: MenuExtraReader.Failure?
     private var locked = screenIsLocked()
+    /// Nil in log-only mode.
+    private var coordinator: DeskCoordinator?
+    private var runner: DeskRunner?
 
     init(options: Options) {
         policy = TriggerPolicy(lengths: options.lengths, tolerance: options.tolerance)
+        if let executable = options.cofoDesk, let target = options.target {
+            coordinator = DeskCoordinator(settings: options.desk)
+            runner = DeskRunner(executable: executable, target: target) { [unowned self] input in self.apply(input) }
+        }
+    }
+
+    func apply(_ input: CoordinatorInput) {
+        guard var coordinator else { return }
+        let outputs = coordinator.handle(input, now: ProcessInfo.processInfo.systemUptime)
+        self.coordinator = coordinator
+        for output in outputs {
+            switch output {
+            case let .run(command): runner?.run(command)
+            case .cancelCommand: runner?.cancel()
+            case let .note(name): emit(["event": name])
+            case let .notifyFailure(message):
+                emit(["event": "failure-notified", "message": message])
+                notifyFailure(message)
+            }
+        }
     }
 
     func tick() {
@@ -129,7 +196,9 @@ final class Agent {
         if nowLocked != locked {
             locked = nowLocked
             emit(["event": nowLocked ? "screen-locked" : "screen-unlocked"])
+            if nowLocked { apply(.screenLocked) }
         }
+        apply(.tick)
 
         var remaining: Int?
         switch reader.read() {
@@ -164,7 +233,10 @@ final class Agent {
             var fields: [String: Any] = ["event": "completed", "length": length ?? NSNull()]
             switch policy.decide(completedLength: length, screenLocked: locked) {
             case .raise:
-                fields["decision"] = "would-raise"
+                fields["decision"] = coordinator == nil ? "would-raise" : "raise"
+                emit(fields)
+                apply(.raiseRequested)
+                return
             case let .ignore(reason):
                 fields["decision"] = "ignore"
                 fields["reason"] = reason
@@ -188,6 +260,7 @@ let prompt = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
 emit([
     "event": "agent-started", "pid": Int(getpid()), "lengths": options.lengths,
     "tolerance": options.tolerance, "interval": options.interval,
+    "desk": options.target.map { $0.joined(separator: " ") } ?? "log-only",
     "accessibility": AXIsProcessTrustedWithOptions(prompt), "screen_locked": screenIsLocked(),
 ])
 
@@ -195,6 +268,10 @@ let agent = Agent(options: options)
 let workspace = NSWorkspace.shared.notificationCenter
 for (name, event) in [(NSWorkspace.willSleepNotification, "will-sleep"), (NSWorkspace.didWakeNotification, "did-wake")] {
     workspace.addObserver(forName: name, object: nil, queue: .main) { _ in emit(["event": event]) }
+}
+if options.testRaise {
+    emit(["event": "test-raise"])
+    agent.apply(.raiseRequested)
 }
 Timer.scheduledTimer(withTimeInterval: options.interval, repeats: true) { _ in
     MainActor.assumeIsolated { agent.tick() }

@@ -72,7 +72,11 @@ tail -f ~/Library/Logs/timer-desk.log              # JSON Lines 事件紀錄
 timer-desk/uninstall.sh                            # 停止並移除 LaunchAgent
 ```
 
-Gate 2 版本只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因，不呼叫桌子。新的執行檔第一次啟動時，要在「輔助使用」清單中允許 `timer-desk`。
+不加 `--cofo-desk` 時只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因。加上 `--cofo-desk PATH --device UUID` 後會真的升降；`--simulate-state FILE` 改用模擬桌。其他參數：`--stand`／`--sit`（預設 M1／M2）、`--nudge`（mm）、`--window`、`--lower-after`（秒），以及測試用的 `--test-raise`（啟動後立刻升一次）。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔。
+
+新的執行檔第一次啟動時，要在「輔助使用」清單中允許 `timer-desk`；第一次控制桌子時要允許藍牙。
+
+點動用 `goto 目前高度 ± 20 mm`，桌子會自己減速停下；取消窗口用 `watch`，第一筆高度當基準，變化超過 5 mm 就當作按了實體鍵，結束 `watch` 並放棄。鎖定時對執行中的 `cofo-desk` 送 SIGTERM，移動中會送 STOP。
 
 ## Gate 1 可行性
 
