@@ -44,6 +44,23 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     #expect(coordinator.lowerDue == nil)
 }
 
+/// The real-desk miss on 2026-10-21: M2 pressed before the first watch sample arrived.
+@Test func panelPressBeforeTheFirstSampleStillCancels() {
+    var coordinator = DeskCoordinator(settings: DeskSettings())
+    _ = coordinator.handle(.raiseRequested, now: 0)
+    _ = coordinator.handle(sitting(), now: 0)
+    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
+    #expect(coordinator.handle(.watchSample(heightMm: 631), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
+}
+
+@Test func lowerNowRunsTheScheduledLowerOnTheNextTick() {
+    var coordinator = DeskCoordinator(settings: DeskSettings())
+    #expect(coordinator.handle(.lowerNow, now: 0) == [.note("lower-now-ignored-none-scheduled")])
+    raise(&coordinator)
+    #expect(coordinator.handle(.lowerNow, now: 30) == [])
+    #expect(coordinator.handle(.tick, now: 30) == [.run(.status)])
+}
+
 @Test func alreadyStandingSkipsTheRaise() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     _ = coordinator.handle(.raiseRequested, now: 0)

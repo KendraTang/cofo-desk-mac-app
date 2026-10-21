@@ -12,13 +12,12 @@ struct Options {
     var cofoDesk: String?
     var target: [String]?
     var desk = DeskSettings()
-    var testRaise = false
 
     static let usage = """
         usage: timer-desk [--length SECONDS]... [--tolerance SECONDS] [--interval SECONDS]
                           [--cofo-desk PATH (--device UUID | --simulate-state FILE)]
                           [--stand SLOT] [--sit SLOT] [--nudge MM] [--window SECONDS]
-                          [--lower-after SECONDS] [--test-raise]
+                          [--lower-after SECONDS]
           --length          timer length that raises the desk; repeatable (default 1500)
           --tolerance       allowed difference from a --length (default 3)
           --interval        poll interval (default 0.5, 0.2-2)
@@ -27,7 +26,9 @@ struct Options {
           --nudge           warning jog in mm (default 20, 5-50)
           --window          cancel window after the jog (default 10, 3-60)
           --lower-after     lower an automatic raise after this long (default 900, 10-7200)
-          --test-raise      run one raise right after start (for testing)
+        With a desk, the agent stays connected through `cofo-desk session` and checks the
+        connection when a matching timer has 15 s left. For testing, SIGUSR1 requests a raise
+        and SIGUSR2 moves a scheduled lower to now.
         """
 
     static func parse(_ arguments: [String]) -> Options? {
@@ -37,10 +38,6 @@ struct Options {
             Double(text).flatMap { range.contains($0) ? $0 : nil }
         }
         while let flag = rest.popFirst() {
-            if flag == "--test-raise" {
-                options.testRaise = true
-                continue
-            }
             guard flag != "--help", let text = rest.popFirst() else { return nil }
             switch flag {
             case "--length":
@@ -77,8 +74,7 @@ struct Options {
             }
         }
         if options.lengths.isEmpty { options.lengths = [1500] }
-        guard (options.cofoDesk == nil) == (options.target == nil), !options.testRaise || options.target != nil,
-              options.desk.standSlot != options.desk.sitSlot
+        guard (options.cofoDesk == nil) == (options.target == nil), options.desk.standSlot != options.desk.sitSlot
         else { return nil }
         return options
     }
@@ -165,13 +161,17 @@ final class Agent {
     private var locked = screenIsLocked()
     /// Nil in log-only mode.
     private var coordinator: DeskCoordinator?
-    private var runner: DeskRunner?
+    private var session: DeskSession?
+    /// Length of the timer now counting down, from its start event.
+    private var countingLength: Int?
+    /// Seconds left at which the desk connection is checked before a matching timer ends.
+    private static let connectionCheckSeconds = 15
 
     init(options: Options) {
         policy = TriggerPolicy(lengths: options.lengths, tolerance: options.tolerance)
         if let executable = options.cofoDesk, let target = options.target {
             coordinator = DeskCoordinator(settings: options.desk)
-            runner = DeskRunner(executable: executable, target: target) { [unowned self] input in self.apply(input) }
+            session = DeskSession(executable: executable, target: target) { [unowned self] input in self.apply(input) }
         }
     }
 
@@ -181,8 +181,8 @@ final class Agent {
         self.coordinator = coordinator
         for output in outputs {
             switch output {
-            case let .run(command): runner?.run(command)
-            case .cancelCommand: runner?.cancel()
+            case let .run(command): session?.run(command)
+            case .cancelCommand: session?.cancel()
             case let .note(name): emit(["event": name])
             case let .notifyFailure(message):
                 emit(["event": "failure-notified", "message": message])
@@ -198,6 +198,7 @@ final class Agent {
             emit(["event": nowLocked ? "screen-locked" : "screen-unlocked"])
             if nowLocked { apply(.screenLocked) }
         }
+        session?.tick(now: ProcessInfo.processInfo.systemUptime)
         apply(.tick)
 
         var remaining: Int?
@@ -211,6 +212,9 @@ final class Agent {
 
         let observation = Observation(time: ProcessInfo.processInfo.systemUptime, remaining: remaining)
         for event in tracker.observe(observation) { log(event) }
+        if remaining == Self.connectionCheckSeconds, !locked, policy.matches(countingLength) {
+            session?.ensureConnected()
+        }
     }
 
     private func report(_ failure: MenuExtraReader.Failure, detail: String?) {
@@ -224,6 +228,7 @@ final class Agent {
     private func log(_ event: TimerEvent) {
         switch event {
         case let .started(length):
+            countingLength = length
             emit(["event": "started", "length": length ?? NSNull()])
         case let .stopped(remaining):
             emit(["event": "stopped", "remaining": remaining])
@@ -269,9 +274,20 @@ let workspace = NSWorkspace.shared.notificationCenter
 for (name, event) in [(NSWorkspace.willSleepNotification, "will-sleep"), (NSWorkspace.didWakeNotification, "did-wake")] {
     workspace.addObserver(forName: name, object: nil, queue: .main) { _ in emit(["event": event]) }
 }
-if options.testRaise {
-    emit(["event": "test-raise"])
-    agent.apply(.raiseRequested)
+signal(SIGPIPE, SIG_IGN)
+var signalSources: [DispatchSourceSignal] = []
+for (number, input, name) in [(SIGUSR1, CoordinatorInput.raiseRequested, "signal-raise"),
+                              (SIGUSR2, CoordinatorInput.lowerNow, "signal-lower-now")] {
+    signal(number, SIG_IGN)
+    let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
+    source.setEventHandler {
+        MainActor.assumeIsolated {
+            emit(["event": name])
+            agent.apply(input)
+        }
+    }
+    source.resume()
+    signalSources.append(source)
 }
 Timer.scheduledTimer(withTimeInterval: options.interval, repeats: true) { _ in
     MainActor.assumeIsolated { agent.tick() }

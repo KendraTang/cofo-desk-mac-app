@@ -55,6 +55,7 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 | `watch --seconds 10` | 每 0.5 秒顯示狀態，最長 3600 秒 |
 | `up/down --seconds 1` | 每 100 ms 重送方向指令（間隔從上一次寫入完成起算；真桌上每次寫入要等 0.17–0.26 秒的回應，所以實際間隔是 0.27–0.36 秒）；時間上限 30 秒，結束送 stop |
 | `goto 105 --unit cm --timeout 20` | 送一次毫米目標，等待通知進入容差後送 stop；逾時上限 120 秒 |
+| `session` | 保持一個連線，從 stdin 逐行讀 JSON 指令（`status`、`goto`、`watch`、`cancel`），一次執行一個，回覆 `{"id", "result"}`／`{"id", "error"}`／`{"id", "cancelled": true}`；`watch` 另外每 0.5 秒送 `{"id", "sample"}`。連線後先送 `{"event": "ready", "status"}`；stdin 結束時正常退出，連線中斷時以錯誤退出。輸出固定為 JSON。被取消的 `goto` 會送 STOP |
 | `stop` | 連線與 profile 探索後立即送 stop；裝置有登入 service 時再送登入與第二次 stop，不等待通知或初始化查詢 |
 
 移動前必須收到新高度與旅行限位，且沒有已回報錯誤。移動中高度超過 1.5 秒未更新、故障、逾時或中斷訊號都會離開控制迴圈，嘗試送 stop 後斷線；斷線可能讓 stop 無法送達，錯誤會保留這項資訊。連線中斷的實體停止保證仍須硬體驗證。
@@ -136,4 +137,4 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 python3 -m unittest discover -s tests -v
 ```
 
-68 個測試涵蓋協定固定向量、真桌實際封包（含記憶高度）、跨通知重組與 checksum 錯誤、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。
+70 個測試涵蓋協定固定向量、真桌實際封包（含記憶高度）、跨通知重組與 checksum 錯誤、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。

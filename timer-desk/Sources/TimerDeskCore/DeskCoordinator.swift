@@ -37,6 +37,8 @@ public enum DeskCommand: Equatable, Sendable {
 
 public enum CoordinatorInput: Equatable, Sendable {
     case raiseRequested
+    /// Moves a scheduled lower to now (for testing).
+    case lowerNow
     case tick
     case screenLocked
     case status(DeskStatus)
@@ -75,7 +77,8 @@ public struct DeskCoordinator {
         case idle
         case checking(Purpose)
         case warning(Purpose, targetMm: Int)
-        case window(Purpose, targetMm: Int, baselineMm: Int?)
+        /// `baselineMm` is where the warning jog stopped; `sampled` is whether the watch reported yet.
+        case window(Purpose, targetMm: Int, baselineMm: Int, sampled: Bool)
         case moving(Purpose, targetMm: Int)
     }
 
@@ -107,6 +110,11 @@ public struct DeskCoordinator {
         case (.raiseRequested, _):
             return [.note("raise-skipped-busy")]
 
+        case (.lowerNow, _):
+            guard let due = lowerDue else { return [.note("lower-now-ignored-none-scheduled")] }
+            lowerDue = (due.raisedMm, now)
+            return []
+
         case (.tick, .idle):
             guard let due = lowerDue, now >= due.at else { return [] }
             lowerDue = nil
@@ -116,21 +124,20 @@ public struct DeskCoordinator {
         case let (.status(status), .checking(purpose)):
             return check(status, for: purpose)
 
-        case let (.gotoFinished, .warning(purpose, target)):
-            phase = .window(purpose, targetMm: target, baselineMm: nil)
+        case let (.gotoFinished(height), .warning(purpose, target)):
+            phase = .window(purpose, targetMm: target, baselineMm: height, sampled: false)
             return [.run(.watch(seconds: settings.windowSeconds))]
 
-        case let (.watchSample(height), .window(purpose, target, baseline)):
-            guard let baseline else {
-                phase = .window(purpose, targetMm: target, baselineMm: height)
+        case let (.watchSample(height), .window(purpose, target, baseline, _)):
+            guard abs(height - baseline) > settings.cancelMm else {
+                phase = .window(purpose, targetMm: target, baselineMm: baseline, sampled: true)
                 return []
             }
-            guard abs(height - baseline) > settings.cancelMm else { return [] }
             phase = .idle
             return [.cancelCommand, .note("\(purpose.name)-cancelled-by-panel")]
 
-        case let (.watchFinished, .window(purpose, target, baseline)):
-            guard baseline != nil else { return fail(purpose, "no height during the cancel window") }
+        case let (.watchFinished, .window(purpose, target, _, sampled)):
+            guard sampled else { return fail(purpose, "no height during the cancel window") }
             phase = .moving(purpose, targetMm: target)
             return [.run(.goto(mm: target))]
 
@@ -183,7 +190,7 @@ public struct DeskCoordinator {
 
     private func purpose(of phase: Phase) -> Purpose {
         switch phase {
-        case let .checking(purpose), let .warning(purpose, _), let .window(purpose, _, _), let .moving(purpose, _):
+        case let .checking(purpose), let .warning(purpose, _), let .window(purpose, _, _, _), let .moving(purpose, _):
             return purpose
         case .idle:
             return .raise

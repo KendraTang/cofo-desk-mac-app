@@ -137,11 +137,14 @@ public struct TriggerPolicy: Sendable {
         case ignore(reason: String)
     }
 
+    public func matches(_ length: Int?) -> Bool {
+        guard let length else { return false }
+        return lengths.contains { abs($0 - length) <= tolerance }
+    }
+
     public func decide(completedLength: Int?, screenLocked: Bool) -> Decision {
-        guard let length = completedLength else { return .ignore(reason: "length-unknown") }
-        guard lengths.contains(where: { abs($0 - length) <= tolerance }) else {
-            return .ignore(reason: "length-mismatch")
-        }
+        guard completedLength != nil else { return .ignore(reason: "length-unknown") }
+        guard matches(completedLength) else { return .ignore(reason: "length-mismatch") }
         if screenLocked { return .ignore(reason: "screen-locked") }
         return .raise
     }

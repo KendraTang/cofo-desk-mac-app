@@ -1,29 +1,52 @@
 #!/bin/bash
-# Gate 3 walkthrough on the real desk. Install the agent first with:
-#   timer-desk/install.sh --length 10 --length 1500 --lower-after 60 \
+# Gate 3 walkthrough on the real desk. Install the agent first, from the repo root:
+#   timer-desk/install.sh --length 10 --length 1500 \
 #     --cofo-desk "$PWD/.venv/bin/cofo-desk" --device 24793885-E0D3-DAA3-9DD8-4271F4793A63
-# Before each case: clear the desk top and keep a hand near the panel. Any panel key stops a move.
+# Most cases trigger the agent with signals instead of waiting for Clock: SIGUSR1 requests a
+# raise, SIGUSR2 runs the scheduled lower now. Before each case: clear the desk top and keep a
+# hand near the panel; any panel key stops a move.
 # Writes a marker into the agent log before each case, then copies the log to probes/out/.
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG="$HOME/Library/Logs/timer-desk.log"
-LABEL=dev.cofodesk.timer-desk
+SERVICE="gui/$(id -u)/dev.cofodesk.timer-desk"
 mark() { printf '{"event":"case","case":"%s","time":"%s"}\n' "$1" "$(date '+%Y-%m-%dT%H:%M:%S%z')" >> "$LOG"; }
-step() {
-    echo; echo "== $1"; echo "   Next: $2"
-    read -r -p "   Press Enter first, then do it. " _ < /dev/tty
-    mark "$1"
-    read -r -p "   Press Enter when the case is done. " _ < /dev/tty
-}
+wait_enter() { read -r -p "   $1 " _ < /dev/tty; }
+case_start() { echo; echo "== $1"; echo "   $2"; wait_enter "Press Enter to start."; mark "$1"; }
+raise() { launchctl kill SIGUSR1 "$SERVICE"; echo "   Raise requested."; }
+lower_now() { launchctl kill SIGUSR2 "$SERVICE"; echo "   Lower requested."; }
 
-launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || { echo "Agent not loaded; install it first (see the top of this script)."; exit 1; }
-echo "Close the phone COFO app so it does not hold the desk connection. Start with the desk at M2 (sitting)."
+launchctl print "$SERVICE" >/dev/null 2>&1 || { echo "Agent not loaded; install it first (see the top of this script)."; exit 1; }
+grep -q desk-session-ready "$LOG" || echo "Warning: the log has no desk-session-ready yet; check Bluetooth access and the phone app."
+echo "Close the phone COFO app. Start with the desk at M2 (sitting)."
 
-step 1-raise-and-lower "Start a 10 s timer. Expect: a 2 cm jog up, 10 s pause, rise to M1. About 60 s later: a 2 cm jog down, 10 s pause, back to M2. Wait for all of it."
-step 2-cancel "Start a 10 s timer. After the jog up, briefly press a panel key (down is fine) within 10 s. Expect: no rise."
-step 3-adjusted "Press M2 if needed, then start a 10 s timer and let the desk rise. Within 60 s, press the panel down key briefly. Expect: no automatic lower."
-step 4-already-standing "With the desk still high (press M1 if needed), start a 10 s timer. Expect: no movement."
-step 5-locked "Press M2, start a 10 s timer; as soon as the rise to M1 begins, lock the screen (Ctrl-Cmd-Q). Expect: the desk stops. Unlock after."
+case_start 1-raise-and-lower "Expect: 2 cm jog up at once, 10 s pause, rise to M1. Then, when you press Enter again: 2 cm jog down, 10 s pause, back to M2."
+raise
+wait_enter "When the desk has reached M1, press Enter to lower."
+lower_now
+wait_enter "Press Enter when the desk is back at M2."
+
+case_start 2-cancel "Expect: 2 cm jog up. Within 10 s, press any panel key (M2 is fine). The desk must not rise to M1."
+raise
+wait_enter "Press Enter after about 15 s."
+
+case_start 3-adjusted "Expect: the desk rises to M1. Then press the panel down key briefly; the later lower must be skipped."
+raise
+wait_enter "After the rise and your down press, press Enter to request the lower."
+lower_now
+wait_enter "Press Enter (the desk should not have moved)."
+
+case_start 4-already-standing "Press M1 on the panel first if the desk is low. Expect: no movement at all."
+raise
+wait_enter "Press Enter after about 5 s."
+
+case_start 5-locked "Press M2 first. After the jog and pause, as soon as the rise begins, lock the screen (Ctrl-Cmd-Q). Expect: the desk stops. Unlock after."
+raise
+wait_enter "Press Enter after unlocking."
+
+case_start 6-clock-latency "Press M2 first, then start a 10 s Clock timer. Expect: the jog starts within about 1 s of the timer ending, then the normal rise. Lower it yourself afterwards."
+wait_enter "Press Enter when done."
+
 mark end
 mkdir -p "$DIR/out"
 cp "$LOG" "$DIR/out/gate3-cases.log"

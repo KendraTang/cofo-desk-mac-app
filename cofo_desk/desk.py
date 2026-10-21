@@ -20,6 +20,7 @@ DISCONNECT_TIMEOUT_SECONDS = 5.0
 LIMIT_SLACK_MM = 3              # reported height may exceed the limits by rounding/sampling
 JOG_LIMIT_MARGIN_MM = 1         # stop jogging this close to a limit
 TARGET_TOLERANCE_MM = {"cm": 1, "in": 3}
+MEMORY_SETTLE_SECONDS = 0.3     # memory frames arrived 0.1-0.2 s after the limits on the real desk
 
 
 class DeskError(Exception):
@@ -239,6 +240,15 @@ class Desk:
             "sample_age_seconds": round(self.clock() - self.height.at, 3) if self.height else None,
             "error": self.error,
         }
+
+    async def refresh(self):
+        """Fresh height and limits; the memory heights follow the limits in the same burst."""
+        sequence = self._sequence()
+        self.limits = None
+        await self.write(QUERY_HEIGHT)
+        await self.write(QUERY_LIMITS)
+        await self.wait_telemetry(require_limits=True, after_sequence=sequence)
+        await asyncio.sleep(MEMORY_SETTLE_SECONDS)
 
     async def _ready_to_move(self):
         sequence = self._sequence()

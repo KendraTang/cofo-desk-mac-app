@@ -72,11 +72,13 @@ tail -f ~/Library/Logs/timer-desk.log              # JSON Lines 事件紀錄
 timer-desk/uninstall.sh                            # 停止並移除 LaunchAgent
 ```
 
-不加 `--cofo-desk` 時只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因。加上 `--cofo-desk PATH --device UUID` 後會真的升降；`--simulate-state FILE` 改用模擬桌。其他參數：`--stand`／`--sit`（預設 M1／M2）、`--nudge`（mm）、`--window`、`--lower-after`（秒），以及測試用的 `--test-raise`（啟動後立刻升一次）。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔。
+不加 `--cofo-desk` 時只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因。加上 `--cofo-desk PATH --device UUID` 後會真的升降；`--simulate-state FILE` 改用模擬桌。其他參數：`--stand`／`--sit`（預設 M1／M2）、`--nudge`（mm）、`--window`、`--lower-after`（秒）。測試時不必等 Clock：`launchctl kill SIGUSR1 gui/$(id -u)/dev.cofodesk.timer-desk` 要求升起，`SIGUSR2` 讓已排程的下降立刻執行。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔。
 
 新的執行檔第一次啟動時，要在「輔助使用」清單中允許 `timer-desk`；第一次控制桌子時要允許藍牙。
 
-點動用 `goto 目前高度 ± 20 mm`，桌子會自己減速停下；取消窗口用 `watch`，第一筆高度當基準，變化超過 5 mm 就當作按了實體鍵，結束 `watch` 並放棄。鎖定時對執行中的 `cofo-desk` 送 SIGTERM，移動中會送 STOP。
+程式透過 `cofo-desk session` 一直保持藍牙連線，所有指令共用這個連線；連線中斷就以 5、10、20…最長 60 秒的間隔重連。符合長度的計時器倒數到 15 秒時會確認連線，斷了就立刻重連。每次另開 `cofo-desk` 要 4–7 秒連線，2026-10-21 第一次實測時，計時結束約 15 秒後才點動，取消窗口也因此多了約 6 秒，所以改成常駐連線。代價是手機 App 平常連不上桌子。
+
+點動用 `goto 目前高度 ± 20 mm`，桌子會自己減速停下。取消窗口用 `watch`，以點動停下的高度當基準，任何一筆高度與它差超過 5 mm，就當作按了實體鍵，取消 `watch` 並放棄。第一次實測時用的是第一筆 `watch` 的高度當基準；使用者在連線期間就按了 M2，基準變成 631，於是沒有取消。鎖定時會取消執行中的指令，移動中會送 STOP。
 
 ## Gate 1 可行性
 

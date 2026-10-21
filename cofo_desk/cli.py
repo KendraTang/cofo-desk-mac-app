@@ -10,7 +10,7 @@ import sys
 import time
 
 from . import __version__
-from .desk import Desk, DeskError, StopRecord
+from .desk import Desk, DeskError, StopRecord, describe
 from .protocol import PROFILES
 
 # Shell convention: 128 + signal number.
@@ -65,6 +65,7 @@ def parser():
         jog = sub.add_parser(direction, help=f"move {direction}, then send stop")
         jog.add_argument("--seconds", type=bounded_number(30), default=1.0)
     sub.add_parser("stop", help="send stop immediately after connection/profile discovery")
+    sub.add_parser("session", help="stay connected and run JSON-line commands from stdin (always JSON)")
     target = sub.add_parser("goto", help="move to height, waiting for telemetry before stopping")
     target.add_argument("height", type=positive_number)
     target.add_argument("--unit", choices=["cm", "in", "mm"], default="cm")
@@ -143,6 +144,88 @@ def trace(direction, uuid, data):
     print(f"TRACE {time.time():.3f} {direction} {uuid} {data.hex()}", file=sys.stderr, flush=True)
 
 
+def write_line(value):
+    print(json.dumps(value, ensure_ascii=False, allow_nan=False), flush=True)
+
+
+SESSION_LIVENESS_SECONDS = 1.0
+
+
+async def session_command(desk, request):
+    """One session request. Replies {"id", "result"}, {"id", "error"} or {"id", "cancelled": true};
+    watch also sends {"id", "sample"} every 0.5 s. A cancelled goto sends STOP first."""
+    ident = request.get("id")
+    try:
+        command = request.get("command")
+        if command == "status":
+            await desk.refresh()
+            result = desk.snapshot()
+        elif command == "goto":
+            millimetres, timeout = request["mm"], request.get("timeout", 40)
+            if isinstance(millimetres, bool) or not isinstance(millimetres, int):
+                raise DeskError("goto needs an integer mm")
+            result = await desk.go_to(millimetres, float(timeout))
+        elif command == "watch":
+            seconds = float(request["seconds"])
+            if not 0 < seconds <= 3600:
+                raise DeskError("watch seconds must be greater than 0 and at most 3600")
+            deadline = time.monotonic() + seconds
+            while True:
+                desk.ensure_connected()
+                write_line({"id": ident, "sample": desk.snapshot()})
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                await asyncio.sleep(min(0.5, remaining))
+            result = {}
+        else:
+            raise DeskError(f"Unknown session command: {command!r}")
+    except asyncio.CancelledError:
+        write_line({"id": ident, "cancelled": True})
+    except Exception as error:
+        write_line({"id": ident, "error": describe(error)})
+    else:
+        write_line({"id": ident, "result": result})
+
+
+async def session(desk):
+    """Holds one connection. Reads {"id", "command", ...} lines from stdin and runs one at a time;
+    {"command": "cancel"} cancels the running one. Ends at EOF, or with an error when the link drops."""
+    loop = asyncio.get_running_loop()
+    reader = asyncio.StreamReader()
+    await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader), sys.stdin)
+    await desk.refresh()
+    write_line({"event": "ready", "status": desk.snapshot()})
+    current = None
+    try:
+        while True:
+            try:
+                line = await asyncio.wait_for(reader.readline(), SESSION_LIVENESS_SECONDS)
+            except TimeoutError:
+                desk.ensure_connected()
+                continue
+            if not line:
+                return
+            try:
+                request = json.loads(line)
+                if not isinstance(request, dict):
+                    raise ValueError("not an object")
+            except ValueError as error:
+                write_line({"id": None, "error": f"Invalid request: {error}"})
+                continue
+            if request.get("command") == "cancel":
+                if current and not current.done():
+                    current.cancel()
+            elif current and not current.done():
+                write_line({"id": request.get("id"), "error": "Busy with another command"})
+            else:
+                current = asyncio.create_task(session_command(desk, request))
+    finally:
+        if current and not current.done():
+            current.cancel()
+            await asyncio.gather(current, return_exceptions=True)
+
+
 async def run(args, stops=None):
     if args.command == "scan":
         if args.simulate:
@@ -177,8 +260,10 @@ async def run(args, stops=None):
                     f"{step['step']}: {step['error']}" for step in steps))
             return Result({"simulated": args.simulate, "stop_sent": True, "steps": steps,
                            "physical_stop_confirmed": False}, stop_lines)
-        await desk.prepare(require_limits=args.command in ("goto", "up", "down"))
-        if args.command == "status":
+        await desk.prepare(require_limits=args.command in ("goto", "up", "down", "session"))
+        if args.command == "session":
+            await session(desk)
+        elif args.command == "status":
             return Result(desk.snapshot(), status_lines)
         elif args.command == "watch":
             deadline = time.monotonic() + args.seconds

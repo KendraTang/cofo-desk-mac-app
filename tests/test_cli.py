@@ -144,3 +144,59 @@ class CliTest(unittest.TestCase):
                     if process.poll() is None:
                         process.kill()
                     process.communicate()
+
+
+class SessionTest(unittest.TestCase):
+    """cofo-desk session over pipes, against the simulator."""
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        state = Path(self.temporary.name) / "state.json"
+        self.process = subprocess.Popen(
+            [sys.executable, "-m", "cofo_desk", "--json", "--simulate", "--state-file", str(state), "session"],
+            cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(self.process.kill)
+        self.addCleanup(self.process.stdout.close)
+        self.addCleanup(self.process.stderr.close)
+
+    def send(self, value):
+        self.process.stdin.write(json.dumps(value) + "\n")
+        self.process.stdin.flush()
+
+    def read(self):
+        return json.loads(self.process.stdout.readline())
+
+    def test_commands_share_one_connection_until_eof(self):
+        ready = self.read()
+        self.assertEqual(ready["event"], "ready")
+        self.assertEqual(ready["status"]["memory_mm"]["M1"], 1100)
+        self.send({"id": 1, "command": "status"})
+        self.assertEqual(self.read()["id"], 1)
+        self.send({"id": 2, "command": "goto", "mm": 740, "timeout": 5})
+        reply = self.read()
+        self.assertEqual((reply["id"], reply["result"]["target_reached"]), (2, True))
+        self.send({"id": 3, "command": "watch", "seconds": 0.6})
+        lines = [self.read()]
+        while "result" not in lines[-1]:
+            lines.append(self.read())
+        self.assertEqual({line["id"] for line in lines}, {3})
+        self.assertGreaterEqual(len(lines), 3)
+        self.assertTrue(all("sample" in line for line in lines[:-1]))
+        self.assertEqual(lines[-1], {"id": 3, "result": {}})
+        self.process.stdin.close()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+
+    def test_cancel_stops_a_move_and_the_session_continues(self):
+        self.read()
+        self.send({"id": 1, "command": "goto", "mm": 1200, "timeout": 30})
+        self.send({"id": 2, "command": "status"})
+        self.assertEqual(self.read(), {"id": 2, "error": "Busy with another command"})
+        self.send({"command": "cancel"})
+        self.assertEqual(self.read(), {"id": 1, "cancelled": True})
+        self.send({"id": 3, "command": "status"})
+        status = self.read()["result"]
+        self.assertLess(status["height_mm"], 1150)
+        self.send({"id": 4, "command": "fly"})
+        self.assertEqual(self.read(), {"id": 4, "error": "Unknown session command: 'fly'"})
+        self.process.stdin.close()
+        self.assertEqual(self.process.wait(timeout=5), 0)
