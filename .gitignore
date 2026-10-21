@@ -10,3 +10,5 @@ __pycache__/
 *.egg-info/
 dist/
 probes/out/ax-[0-9]*.txt
+probes/out/perm-probe
+probes/out/dev.cofodesk.*

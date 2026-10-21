@@ -1,0 +1,8 @@
+2026-10-21T09:25:47Z pid=6925 ppid=1 exe=/Users/tkain/projects/cofo-desk-auto/probes/out/perm-probe
+2026-10-21T09:25:47Z AXIsProcessTrusted=true
+2026-10-21T09:25:47Z timer menu extra value=23:17
+2026-10-21T09:25:52Z cofo-desk exit=0 reason=1
+2026-10-21T09:25:52Z stdout: {"simulated": false, "connected": true, "profile": "fe60", "height_mm": 631, "height_cm": 63.1, "height_in": 24.84, "raw_height": 631, "native_unit": "cm", "unit_source": "notification", "limits_mm": [630, 1280], "sample_age_seconds": 0.178, "error": null}
+
+2026-10-21T09:25:52Z stderr: 
+2026-10-21T09:25:52Z done

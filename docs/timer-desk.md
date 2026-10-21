@@ -1,6 +1,6 @@
 # Clock 計時器自動升降桌
 
-狀態：Gate 1 可行性驗證中，本輪目標做到 Gate 3。最後更新：2026-10-21。
+狀態：Gate 1 通過，下一步 Gate 2 偵測原型；本輪目標做到 Gate 3。最後更新：2026-10-21。
 
 這份取代 2026-10-20 的 agent 規格。主要差異是：前版要求「使用者按下確認才升降」並要做 Menu Bar App；本版改為點動預告加上實體鍵取消窗口，也不做 GUI。理由見[與前版的差異](#與前版的差異)。
 
@@ -46,7 +46,11 @@
 
 ## 架構
 
-使用 Python，放在本 repo，直接呼叫 `cofo_desk` 的 `Desk`，不另外啟動 CLI 子程序。用 LaunchAgent 在登入時啟動並常駐，不做 GUI。
+主程式用 Swift 寫，負責偵測與流程；桌子動作則以子程序呼叫本 repo 的 `cofo-desk` CLI，讀它的 JSON 與結束碼。程式由 LaunchAgent 在登入時啟動並常駐，不做 GUI。
+
+選 Swift 的原因是偵測需要輔助使用權限。macOS 把權限記在發起的程式身上，由一個專用的程式持有輔助使用和藍牙權限，就不必把權限給整個 Python 直譯器。`cofo-desk` 子程序會沿用主程式的藍牙權限（見下方可行性表）。
+
+程式用本機自簽憑證 `cofo-desk-auto local signing` 簽署（建立方式：`scripts/create-signing-identity.sh`），所以重新編譯後權限不必重給。Command Line Tools 的臨時簽署每次編譯都會改變身分。
 
 ```text
 Clock（外部，計時的唯一依據）
@@ -57,7 +61,7 @@ Clock（外部，計時的唯一依據）
   → Reporter（log、失敗通知）
 ```
 
-偵測和桌子控制分開。單元測試使用假的計時觀測和模擬桌；整合測試才連真桌。如果最後選定的偵測方式需要輔助使用權限，而 Python 很難取得，就回報並另外寫一個小的 Swift 偵測工具，由 Python 呼叫。
+偵測和桌子控制分開。單元測試使用假的計時觀測和 `cofo-desk --simulate`；整合測試才連真桌。
 
 ## Gate 1 可行性
 
@@ -76,11 +80,17 @@ Clock（外部，計時的唯一依據）
 | 推定計時器的原始長度 | 部分 Verified | 選單列沒有原始長度，只能用開始後第一次看到的數值：10 秒計時器第一個值是 `0:09`，且維持約 2 秒。程式啟動時如果計時器已經在跑，就不知道原始長度，這種情況不觸發。25 分鐘的實際數值未測 |
 | 桌子 M1／M2 高度可讀 | Verified | 每次送出上下限查詢（`F1 F1 07`）後都會收到 `25`／`26`／`27`／`28`。按 M1 停在 959（`25` = 959，面板顯示 96）；按 M2 停在 631（`26` = 631，面板顯示 63）。`27` = 1280、`28` = 0，沒有按 M3，所以尚未證實 |
 | 手動按鍵即時送出高度 | Verified | 面板移動期間每 0.1–0.3 秒有一筆高度通知，不會中斷；靜止時間隔最長 4.4 秒。M1 移動約 33 mm/s |
-| LaunchAgent 下取得藍牙權限 | Unverified | |
+| LaunchAgent 下的權限 | Verified | 2026-10-21 用 [perm-probe](../probes/perm/run.sh) 測試：launchd 啟動的簽署程式在授權後 `AXIsProcessTrusted = true`，並讀到正在跑的計時器 `23:17`。它啟動的 `cofo-desk status` 透過藍牙讀到真桌 631 mm。重新編譯並用同一張自簽憑證簽署後，不需要重新授權。第一次編譯時，codesign 讀取私鑰要在鑰匙圈視窗選「永遠允許」 |
 
 Clock 證據：[選單列 probe](../probes/ax-timer-watch.swift) 錄下的 [四組 10 秒計時](../probes/out/ax-timer-cases.log)（自然完成、暫停後恢復、取消、連續兩次），以及 [AX 樹狀結構 probe](../probes/ax-dump.swift)。
 
 桌子證據：[panel keys log](hardware-evidence/2026-10-21-panel-keys.log)，用 [script](hardware-evidence/2026-10-21-panel-keys.sh) 錄製。這個 script 只監看，不送移動指令。
+
+**Gate 1 結論（2026-10-21）**：可以在不改變使用習慣的前提下偵測 Clock 計時自然完成，方法是每 0.5 秒輪詢 Control Center 選單列的計時器項目。已知限制：
+
+- 剛好在 `0:01` 暫停，會被當成完成；之後的點動預告和取消窗口可以擋下。
+- 原始長度只能從第一次看到的數值推定；程式啟動時計時器已經在跑，就不觸發。
+- 鎖定、睡眠、重新登入、UI 語言和隱藏選單列項目，留到 Gate 2 測。
 
 ### 測試矩陣
 
@@ -117,6 +127,8 @@ Clock 證據：[選單列 probe](../probes/ax-timer-watch.swift) 錄下的 [四�
 - 不做 Menu Bar App 與確認通知，只在失敗時通知。
 - 高度以桌子 M 鍵為準：M1 站、M2 坐。
 - 「已經存在的升降桌 script」就是本 repo 的 `cofo-desk`。
+- 偵測改用 Control Center 選單列的計時器項目（方案 B）；Shortcuts 沒有提供讀取計時器的動作。
+- 主程式用 Swift，原因見[架構](#架構)。
 
 ## 後續（本輪不做）
 
