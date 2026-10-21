@@ -90,9 +90,9 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     raise(&coordinator)
     #expect(coordinator.handle(.tick, now: 899) == [])
     #expect(coordinator.handle(.tick, now: 900) == [.run(.status)])
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 955, memoryMm: memory)), now: 901) == [.run(.goto(mm: 935))])
-    _ = coordinator.handle(.gotoFinished(heightMm: 935), now: 902)
-    _ = coordinator.handle(.watchSample(heightMm: 935), now: 903)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 901) == [.run(.goto(mm: 938))])
+    _ = coordinator.handle(.gotoFinished(heightMm: 938), now: 902)
+    _ = coordinator.handle(.watchSample(heightMm: 938), now: 903)
     #expect(coordinator.handle(.watchFinished, now: 912) == [.run(.goto(mm: 631))])
     #expect(coordinator.handle(.gotoFinished(heightMm: 631), now: 920) == [.note("lowered")])
     #expect(coordinator.lowerDue == nil)
@@ -104,6 +104,29 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     _ = coordinator.handle(.tick, now: 900)
     #expect(coordinator.handle(.status(DeskStatus(heightMm: 900, memoryMm: memory)), now: 901) == [
         .note("lower-skipped-adjusted-by-hand"),
+    ])
+}
+
+/// The real-desk case: a brief panel tap moved the raised desk from 958 to 951.
+@Test func aSmallPanelTapCountsAsAdjusted() {
+    var coordinator = DeskCoordinator(settings: DeskSettings())
+    raise(&coordinator)
+    _ = coordinator.handle(.tick, now: 900)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 955, memoryMm: memory)), now: 901) == [
+        .note("lower-skipped-adjusted-by-hand"),
+    ])
+}
+
+@Test func aMoveThatStopsShortNamesThePanel() {
+    var coordinator = DeskCoordinator(settings: DeskSettings())
+    _ = coordinator.handle(.raiseRequested, now: 0)
+    _ = coordinator.handle(sitting(), now: 0)
+    _ = coordinator.handle(.gotoFinished(heightMm: 651), now: 0)
+    _ = coordinator.handle(.watchSample(heightMm: 651), now: 1)
+    _ = coordinator.handle(.watchFinished, now: 10)
+    #expect(coordinator.handle(.commandFailed("Height telemetry is stale; movement stopped"), now: 30) == [
+        .note("raise-failed"),
+        .notifyFailure("升桌失敗：沒有到達 M1，可能按了面板鍵（Height telemetry is stale; movement stopped）"),
     ])
 }
 

@@ -9,9 +9,11 @@ public struct DeskSettings: Sendable {
     public var windowSeconds = 10.0
     /// When an automatic raise is followed by an automatic lower.
     public var lowerAfterSeconds = 900.0
-    /// Within this of the stand height counts as already standing; further than this from the
-    /// raised height counts as adjusted by hand.
+    /// Within this of the stand height counts as already standing.
     public var atHeightMm = 10
+    /// Further than this from the raised height counts as adjusted by hand. goto lands within
+    /// 1 mm on the real desk; a brief panel tap moved it 7 mm (2026-10-21).
+    public var adjustedMm = 3
     /// A height change this large during the window counts as a panel key press.
     public var cancelMm = 5
 
@@ -149,6 +151,11 @@ public struct DeskCoordinator {
             }
             return [.note("lowered")]
 
+        case let (.commandFailed(message), .moving(purpose, _)):
+            // On the real desk this is usually a panel press: the desk stops short, keeps reporting
+            // its height for about 10 s, then goes quiet and cofo-desk reports stale telemetry.
+            let slot = purpose == .raise ? settings.standSlot : settings.sitSlot
+            return fail(purpose, "沒有到達 \(slot)，可能按了面板鍵（\(message)）")
         case let (.commandFailed(message), phase) where phase != .idle:
             return fail(purpose(of: phase), message)
 
@@ -174,7 +181,7 @@ public struct DeskCoordinator {
             guard let sit = status.memoryMm[settings.sitSlot] else {
                 return fail(purpose, "\(settings.sitSlot) memory height is not set")
             }
-            if abs(height - raised) > settings.atHeightMm {
+            if abs(height - raised) > settings.adjustedMm {
                 phase = .idle
                 return [.note("lower-skipped-adjusted-by-hand")]
             }
