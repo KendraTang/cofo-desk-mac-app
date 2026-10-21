@@ -1,0 +1,58 @@
+===== 16:25:41 recording 150 s. Do these in Clock, about 5 s apart:
+  1. 10 s timer, let it finish; dismiss the alert
+  2. 10 s timer, pause at about 5 s, wait 10 s, resume, let it finish; dismiss
+  3. 10 s timer, cancel at about 5 s
+  4. 10 s timer, let it finish, and immediately start another 10 s timer; let both finish
+observer add: -25207
+watching 150 s, pid 1112
+   0.55 poll 0:00
+  19.55 poll 0:09
+  21.55 poll 0:08
+  22.55 poll 0:07
+  23.55 poll 0:06
+  24.55 poll 0:05
+  25.55 poll 0:04
+  26.55 poll 0:03
+  27.55 poll 0:02
+  28.55 poll 0:01
+  29.55 poll 0:00
+  37.55 poll 0:09
+  38.55 poll 0:08
+  39.55 poll 0:07
+  40.55 poll 0:06
+  41.55 poll 0:05
+  42.55 poll 0:04
+  43.05 poll 0:00
+  53.55 poll 0:04
+  54.55 poll 0:03
+  55.55 poll 0:02
+  56.55 poll 0:01
+  57.55 poll 0:00
+  68.05 poll 0:09
+  69.56 poll 0:08
+  70.55 poll 0:07
+  71.55 poll 0:06
+  72.55 poll 0:05
+  73.55 poll 0:04
+  74.55 poll 0:00
+  86.55 poll 0:09
+  87.55 poll 0:08
+  88.55 poll 0:07
+  89.55 poll 0:06
+  90.56 poll 0:05
+  91.55 poll 0:04
+  92.55 poll 0:03
+  93.55 poll 0:02
+  94.55 poll 0:01
+  95.55 poll 0:00
+  97.05 poll 0:09
+  98.55 poll 0:08
+  99.54 poll 0:07
+ 100.54 poll 0:06
+ 101.54 poll 0:05
+ 102.54 poll 0:04
+ 103.54 poll 0:03
+ 104.54 poll 0:02
+ 105.54 poll 0:01
+ 106.54 poll 0:00
+rc=0

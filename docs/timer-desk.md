@@ -68,14 +68,19 @@ Clock（外部，計時的唯一依據）
 | Clock 計時的 App Intents | Verified（靜態） | `MobileTimerSupport.framework` 的 `Metadata.appintents` 列出 Start、Get Current、Pause、Resume、Cancel Timer，全部是 `isDiscoverable: true`，除了 Start 之外的四個只標註 watchOS obsoleted |
 | A：Shortcuts 取得目前計時器 | Unsupported（UI） | 2026-10-21 在 Shortcuts 搜尋 `timer` 和 `get current`，Clock 只出現 Start Timer。metadata 有，但 Shortcuts 沒有提供這個動作；原因不明 |
 | Get Current Timer 的輸出 | 只有靜態證據 | metadata 的 `outputType` 是 duration measurement，看起來只有一個時間長度，沒有狀態或原始長度。就算能用，也很可能分不出暫停或完成，也篩不出 25 分鐘 |
-| B：輔助使用讀取選單列或 Clock UI | Unverified | 下一步 |
+| B：輔助使用讀取選單列 | Verified | Control Center（`com.apple.controlcenter`）的選單列項目 `AXIdentifier = com.apple.menuextra.timer`，`AXValue` 是 `"2:53"` 這類剩餘時間，每秒更新。Clock App 結束後照樣更新。兩個螢幕各有一份 |
+| B：閒置、暫停、取消、完成的區分 | 部分 Verified | 四種狀態的 `AXValue` 都是 `"0:00"`。自然完成是 `0:01 → 0:00`；暫停和取消是從中途的數值直接跳到 `0:00`；恢復時從暫停前的數值接著倒數。暫停和取消要等到一直沒恢復才分得出來。已知漏洞：剛好在 `0:01` 暫停，會被當成完成 |
+| B：訂閱數值變化 | Unsupported | `AXObserverAddNotification(kAXValueChangedNotification)` 回傳 -25207（notification unsupported），只能輪詢。0.5 秒輪詢的偵測延遲在 1 秒內 |
+| B：鎖定、睡眠、重新登入、UI 語言、隱藏選單列項目 | Unverified | |
 | C：Clock 通知偵測 | Unverified | 下一步 |
-| 讀得到計時器的原始長度 | Unverified | 25 分鐘篩選需要這項 |
+| 推定計時器的原始長度 | 部分 Verified | 選單列沒有原始長度，只能用開始後第一次看到的數值：10 秒計時器第一個值是 `0:09`，且維持約 2 秒。程式啟動時如果計時器已經在跑，就不知道原始長度，這種情況不觸發。25 分鐘的實際數值未測 |
 | 桌子 M1／M2 高度可讀 | Verified | 每次送出上下限查詢（`F1 F1 07`）後都會收到 `25`／`26`／`27`／`28`。按 M1 停在 959（`25` = 959，面板顯示 96）；按 M2 停在 631（`26` = 631，面板顯示 63）。`27` = 1280、`28` = 0，沒有按 M3，所以尚未證實 |
 | 手動按鍵即時送出高度 | Verified | 面板移動期間每 0.1–0.3 秒有一筆高度通知，不會中斷；靜止時間隔最長 4.4 秒。M1 移動約 33 mm/s |
 | LaunchAgent 下取得藍牙權限 | Unverified | |
 
-證據：[panel keys log](hardware-evidence/2026-10-21-panel-keys.log)，用 [script](hardware-evidence/2026-10-21-panel-keys.sh) 錄製。這個 script 只監看，不送移動指令。
+Clock 證據：[選單列 probe](../probes/ax-timer-watch.swift) 錄下的 [四組 10 秒計時](../probes/out/ax-timer-cases.log)（自然完成、暫停後恢復、取消、連續兩次），以及 [AX 樹狀結構 probe](../probes/ax-dump.swift)。
+
+桌子證據：[panel keys log](hardware-evidence/2026-10-21-panel-keys.log)，用 [script](hardware-evidence/2026-10-21-panel-keys.sh) 錄製。這個 script 只監看，不送移動指令。
 
 ### 測試矩陣
 
