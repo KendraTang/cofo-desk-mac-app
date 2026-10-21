@@ -90,6 +90,11 @@ def _decode(opcode: int, payload: bytes):
     if opcode == 0x04:
         # Assumption: RST uses the common frame layout; not yet seen on the real desk.
         return Event("error", "RST")
+    if 0x25 <= opcode <= 0x28 and len(payload) == 2:
+        # Panel memory heights, sent after every limits query; the original app ignores them.
+        # 25 = M1 and 26 = M2 match the panel on the real desk (2026-10-21); 27/28 as M3/M4 is
+        # assumed from the order. Same unit as the height field; 0 means the slot is empty.
+        return Event("memory", (opcode - 0x24, int.from_bytes(payload, "big")))
     return None
 
 

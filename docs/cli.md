@@ -51,7 +51,7 @@ Bleak 使用方式依據官方 [Client API](https://bleak.readthedocs.io/en/late
 | --- | --- |
 | `scan --seconds 5` | 限時掃描，最長 30 秒 |
 | `inspect` | 服務、characteristic UUID 與 properties，不需命中已知 profile |
-| `status` | 一次高度、單位、限位、錯誤及樣本時間 |
+| `status` | 一次高度、單位、限位、面板記憶高度（`memory_mm`）、錯誤及樣本時間 |
 | `watch --seconds 10` | 每 0.5 秒顯示狀態，最長 3600 秒 |
 | `up/down --seconds 1` | 每 100 ms 重送方向指令（間隔從上一次寫入完成起算；真桌上每次寫入要等 0.17–0.26 秒的回應，所以實際間隔是 0.27–0.36 秒）；時間上限 30 秒，結束送 stop |
 | `goto 105 --unit cm --timeout 20` | 送一次毫米目標，等待通知進入容差後送 stop；逾時上限 120 秒 |
@@ -108,7 +108,8 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 - 單一封包不超過 32 byte。觀察到最長的是上下限封包的 10 byte；宣稱更長的會被視為誤判的開頭而跳過，暫存的尾巴因此一定少於 32 byte。
 - 錯誤碼（`02`）與 RST（`04`）也使用同樣的格式。這兩種在真桌上還沒看過。
 - 高度封包的資料是 3 byte，前 2 byte 是高度，第 3 byte（目前都是 `07`）不解讀。資料至少 2 byte 即可。
-- `17`、`19`、`1D`、`25`–`28` 等原 App 沒解析的 opcode 一律忽略，不推定意義。
+- `25`–`28` 是面板的記憶高度，桌子每次回應上下限查詢後都會送出；原 App 沒有解析。`status` 以 `memory_mm` 輸出，例如 `{"M1": 959, "M2": 631, "M3": 1280, "M4": null}`，0 輸出為 null。2026-10-21 已證實 `25` = M1、`26` = M2；`27`、`28` 是 M3、M4 只是依順序推定。單位換算與高度相同。
+- `17`、`19`、`1D` 等原 App 沒解析的 opcode 一律忽略，不推定意義。
 
 模擬裝置送出的通知使用同樣的格式，包括高度的第 3 byte。
 
@@ -120,7 +121,7 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 
 `--json` 的單次指令輸出一個 JSON object；`watch` 輸出 JSON Lines。執行失敗輸出 `{"error": "..."}`，結束碼 1；參數錯誤為 argparse 訊息、結束碼 2；中斷時 SIGINT 為 130、SIGTERM 為 143、SIGHUP 為 129。狀態中的 `connected` 與 `sample_age_seconds` 是取樣當時的值，單次指令結束會關閉連線。
 
-模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬周邊只接受完整且 checksum、結尾正確的指令封包，送出的通知也和真桌同格式。它收到 UP／DOWN 後會持續移動到 STOP 或限位，也會立即停下。真桌的行為不同：沒有重送時約 1 秒自己停，STOP 後約再走 1.5 cm，速度約 38 mm/s（見 [移動案例](reverse-engineering.md#移動案例2026-10-20)）；模擬器目前沒有模擬這些。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s。
+模擬模式一定要明確加 `--simulate`，所有輸出標示 `simulated`。模擬周邊和 BLE 共用相同的 profile 選擇、編碼、通知解析及控制流程；模擬生成的通知不是硬體證據。模擬周邊只接受完整且 checksum、結尾正確的指令封包，送出的通知也和真桌同格式。它收到 UP／DOWN 後會持續移動到 STOP 或限位，也會立即停下。真桌的行為不同：沒有重送時約 1 秒自己停，STOP 後約再走 1.5 cm，速度約 38 mm/s（見 [移動案例](reverse-engineering.md#移動案例2026-10-20)）；模擬器目前沒有模擬這些。模擬範圍 630–1280 mm、初始 720 mm、速度 35 mm/s，記憶高度固定為 M1 1100、M2 720，M3、M4 為空。
 
 模擬狀態只保存停止位置，不保存或恢復移動指令；與 Android App 資料互相獨立。預設檔案：
 
@@ -135,4 +136,4 @@ SIGINT（Ctrl-C）、SIGTERM 與 SIGHUP（關閉終端機）都走同一條清�
 python3 -m unittest discover -s tests -v
 ```
 
-66 個測試涵蓋協定固定向量、真桌實際封包、跨通知重組與 checksum 錯誤、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。
+68 個測試涵蓋協定固定向量、真桌實際封包（含記憶高度）、跨通知重組與 checksum 錯誤、未知／截斷通知、profile／properties、條件式登入與初始化、訂閱／高度逾時、序列化寫入、限位／故障／舊高度拒絕、目標逾時、停止失敗、取消清理、獨立 stop 的登入次序、模擬器拒收錯誤封包、BLE 入口 mock、跨程序狀態、三種中斷訊號與重複訊號、純文字輸出及 JSON／結束碼。已另外實際安裝含 Bleak 的 package，驗證 console entry point 與 dependency consistency；沒有進行真桌連線或移動。

@@ -33,6 +33,7 @@ class SimulatedClient:
         self.is_connected = False
         self.height = 720.0
         self.minimum, self.maximum = 630, 1280
+        self.memory = (1100, 720, 0, 0)  # panel M1-M4; not saved, the panel is not simulated
         self.direction = 0
         self.target = None
         self.callback = None
@@ -117,6 +118,8 @@ class SimulatedClient:
             self._height()
         elif data == QUERY_LIMITS:
             self._emit(notification_frame(0x07, self.maximum.to_bytes(2, "big") + self.minimum.to_bytes(2, "big")))
+            for slot, raw in enumerate(self.memory):
+                self._emit(notification_frame(0x25 + slot, raw.to_bytes(2, "big")))
         elif data == STOP:
             self.direction, self.target = 0, None
             self._height()

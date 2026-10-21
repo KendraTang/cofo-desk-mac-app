@@ -95,6 +95,7 @@ class Desk:
         # Optional raw-traffic observer, called as trace(direction, uuid, data).
         self.trace = trace
         self.height = self.reported_unit = self.limits = self.error = None
+        self.memory = {}  # panel slot -> raw height, 0 when empty
         self.reader_stream = NotificationReader()
         self._write_lock = asyncio.Lock()
 
@@ -135,6 +136,9 @@ class Desk:
                 self.reported_unit = event.value
             elif event.kind == "limits":
                 self.limits = event.value
+            elif event.kind == "memory":
+                slot, raw = event.value
+                self.memory[slot] = raw
             elif event.kind == "error":
                 # The recovered protocol has no established clear-error packet.
                 self.error = event.value
@@ -206,11 +210,16 @@ class Desk:
             return None, None
         return ("cm" if self.height.raw >= 550 else "in"), "original-app heuristic"
 
-    def height_mm(self):
+    def _raw_mm(self, raw):
         unit, _ = self._unit()
-        if self.height is None:
-            return None
-        return self.height.raw * (1 if unit == "cm" else 2.54)
+        return raw * (1 if unit == "cm" else 2.54)
+
+    def height_mm(self):
+        return self._raw_mm(self.height.raw) if self.height else None
+
+    def memory_mm(self):
+        return {f"M{slot}": round(self._raw_mm(raw), 2) if raw else None
+                for slot, raw in sorted(self.memory.items())}
 
     def snapshot(self):
         unit, source = self._unit()
@@ -226,6 +235,7 @@ class Desk:
             "native_unit": unit,
             "unit_source": source,
             "limits_mm": list(self.limits) if self.limits else None,
+            "memory_mm": self.memory_mm(),
             "sample_age_seconds": round(self.clock() - self.height.at, 3) if self.height else None,
             "error": self.error,
         }

@@ -33,6 +33,7 @@ class CliTest(unittest.TestCase):
         self.assertTrue(status["simulated"])
         self.assertEqual(status["height_mm"], 720)
         self.assertEqual(status["limits_mm"], [630, 1280])
+        self.assertEqual(status["memory_mm"], {"M1": 1100, "M2": 720, "M3": None, "M4": None})
         state = json.loads(self.state.read_text())
         self.assertEqual(state, {"version": 1, "height_mm": 720})
 

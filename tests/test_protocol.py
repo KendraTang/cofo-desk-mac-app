@@ -33,6 +33,14 @@ class ProtocolTest(unittest.TestCase):
         self.assertEqual(notification_events(self.REAL_STATUS_BURST), [Event("unit", "cm"), Event("height", 630)])
         self.assertEqual(notification_frame(0x01, bytes.fromhex("027607")), self.REAL_HEIGHT)
 
+    # The burst after a limits query on 2026-10-21; the panel showed 96 after M1 and 63 after M2.
+    REAL_MEMORY_BURST = bytes.fromhex("F2F2250203BFE97EF2F226020277A17EF2F2270205002E7EF2F2280200002A7E")
+
+    def test_real_desk_memory_frames(self):
+        self.assertEqual(notification_events(self.REAL_MEMORY_BURST), [
+            Event("memory", (1, 959)), Event("memory", (2, 631)), Event("memory", (3, 1280)), Event("memory", (4, 0))])
+        self.assertEqual(notification_events(notification_frame(0x25, b"\x03")), [])
+
     def test_frames_split_across_notifications_are_joined(self):
         reader = NotificationReader()
         # The real split seen on the desk: the height frame's 7E arrived alone.

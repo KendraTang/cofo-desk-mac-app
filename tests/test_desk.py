@@ -4,7 +4,9 @@ from types import SimpleNamespace
 import unittest
 
 from cofo_desk.desk import Desk, DeskError, select_profile
-from cofo_desk.protocol import LOGIN_BYTES, LOGIN_CHARACTERISTIC, LOGIN_SERVICE, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP
+from cofo_desk.protocol import (
+    LOGIN_BYTES, LOGIN_CHARACTERISTIC, LOGIN_SERVICE, QUERY_HEIGHT, QUERY_LIMITS, STOP, UP, notification_frame,
+)
 from support import Peripheral, error, height, unit
 
 
@@ -141,6 +143,17 @@ class DeskTest(unittest.IsolatedAsyncioTestCase):
             async with self.desk(peripheral) as desk:
                 await desk.prepare(require_limits=True)
         self.assertNotIn(UP, [packet for _, packet, _ in peripheral.sent])
+
+    async def test_memory_heights_use_the_height_unit_and_empty_slots_are_null(self):
+        peripheral = Peripheral()
+        async with self.desk(peripheral) as desk:
+            await desk.prepare()
+            self.assertEqual(desk.snapshot()["memory_mm"], {})
+            peripheral.notify(notification_frame(0x25, (959).to_bytes(2, "big")).hex()
+                              + notification_frame(0x28, b"\x00\x00").hex())
+            self.assertEqual(desk.snapshot()["memory_mm"], {"M1": 959, "M4": None})
+            peripheral.notify(unit(True))
+            self.assertEqual(desk.snapshot()["memory_mm"], {"M1": 2435.86, "M4": None})
 
     async def test_unit_report_override_and_error_are_not_guessed_away(self):
         peripheral = Peripheral()
