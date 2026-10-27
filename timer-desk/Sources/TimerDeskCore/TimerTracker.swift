@@ -24,7 +24,7 @@ public struct Observation: Sendable {
 }
 
 public enum TimerEvent: Equatable, Sendable {
-    /// `length` is nil when the start was not observed (agent launch mid-count, read gap, wake).
+    /// `length` is nil when the start was not observed (agent launch mid-count, long read gap, wake).
     case started(length: Int?)
     /// Jumped to 0:00 mid-count: paused or cancelled; the two look the same until a resume.
     case stopped(remaining: Int)
@@ -53,10 +53,13 @@ public struct TimerTracker {
         case stopped(Session, at: Int)
     }
 
-    /// Longer than this between polls means the sequence may have skipped values (sleep, stall).
+    /// Longer than this between readable polls means the sequence may have skipped values (sleep,
+    /// stall). A read failure no longer than this keeps the session: Control Center restarts
+    /// several times a day and the menu extra is readable again within about 0.5 s (2026-10-27).
     public let maxGap: TimeInterval
     private var state = State.unknown
-    private var lastTime: TimeInterval?
+    private var lastReadable: TimeInterval?
+    private var readFailed = false
     private var reported = true
 
     public init(maxGap: TimeInterval = 2.5) {
@@ -64,13 +67,16 @@ public struct TimerTracker {
     }
 
     public mutating func observe(_ observation: Observation) -> [TimerEvent] {
-        let gap = lastTime.map { observation.time - $0 } ?? .infinity
-        lastTime = observation.time
-
         guard let remaining = observation.remaining else {
-            state = .unknown
+            readFailed = true
             defer { reported = false }
             return reported ? [.unavailable] : []
+        }
+        let gap = lastReadable.map { observation.time - $0 } ?? .infinity
+        lastReadable = observation.time
+        if readFailed {
+            readFailed = false
+            if gap > maxGap { state = .unknown }
         }
         var events: [TimerEvent] = []
         if !reported {

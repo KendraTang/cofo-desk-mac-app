@@ -65,10 +65,21 @@ private func countdown(from start: Int, at time: TimeInterval) -> [(TimeInterval
     ])
 }
 
-@Test func readGapForgetsTheLength() {
+/// The real miss on 2026-10-27: Control Center restarted 6 minutes into a pomodoro and the
+/// menu extra was unreadable for one poll.
+@Test func briefReadFailureKeepsTheLength() {
     var tracker = TimerTracker()
     var changes: [(TimeInterval, String?)] = [(0, "0:00")] + countdown(from: 9, at: 1)
     changes[4] = (changes[4].0, nil)
+    #expect(replay(changes, tracker: &tracker) == [
+        .started(length: 10), .unavailable, .available, .completed(length: 10),
+    ])
+}
+
+@Test func longReadFailureForgetsTheLength() {
+    var tracker = TimerTracker()
+    let changes: [(TimeInterval, String?)] = [(0, "0:00")] + countdown(from: 9, at: 1)
+        .enumerated().map { $0.offset >= 3 && $0.offset < 6 ? ($0.element.0, nil) : $0.element }
     #expect(replay(changes, tracker: &tracker) == [
         .started(length: 10), .unavailable, .available, .started(length: nil), .completed(length: nil),
     ])
