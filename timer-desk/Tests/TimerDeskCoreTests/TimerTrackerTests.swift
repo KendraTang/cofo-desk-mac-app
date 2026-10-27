@@ -124,3 +124,11 @@ private func countdown(from start: Int, at time: TimeInterval) -> [(TimeInterval
     #expect(policy.decide(completedLength: nil, screenLocked: false) == .ignore(reason: "length-unknown"))
     #expect(policy.decide(completedLength: 1500, screenLocked: true) == .ignore(reason: "screen-locked"))
 }
+
+@Test func policyWithoutLengthsRaisesForAnyUnlockedTimer() {
+    let policy = TriggerPolicy(lengths: [])
+    #expect(policy.decide(completedLength: 300, screenLocked: false) == .raise)
+    #expect(policy.decide(completedLength: nil, screenLocked: false) == .raise)
+    #expect(policy.matches(nil))
+    #expect(policy.decide(completedLength: 300, screenLocked: true) == .ignore(reason: "screen-locked"))
+}

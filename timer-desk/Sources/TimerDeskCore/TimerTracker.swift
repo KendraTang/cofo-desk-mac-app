@@ -130,6 +130,7 @@ public struct TimerTracker {
 
 /// Decides whether a completed timer should move the desk.
 public struct TriggerPolicy: Sendable {
+    /// Empty means any length, including an unknown one.
     public let lengths: [Int]
     public let tolerance: Int
 
@@ -144,13 +145,16 @@ public struct TriggerPolicy: Sendable {
     }
 
     public func matches(_ length: Int?) -> Bool {
+        guard !lengths.isEmpty else { return true }
         guard let length else { return false }
         return lengths.contains { abs($0 - length) <= tolerance }
     }
 
     public func decide(completedLength: Int?, screenLocked: Bool) -> Decision {
-        guard completedLength != nil else { return .ignore(reason: "length-unknown") }
-        guard matches(completedLength) else { return .ignore(reason: "length-mismatch") }
+        if !lengths.isEmpty {
+            guard completedLength != nil else { return .ignore(reason: "length-unknown") }
+            guard matches(completedLength) else { return .ignore(reason: "length-mismatch") }
+        }
         if screenLocked { return .ignore(reason: "screen-locked") }
         return .raise
     }

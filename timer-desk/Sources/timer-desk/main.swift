@@ -19,7 +19,7 @@ struct Options {
                           [--cofo-desk PATH (--device UUID | --simulate-state FILE)]
                           [--stand SLOT] [--sit SLOT] [--nudge MM] [--window SECONDS]
                           [--lower-after SECONDS] [--trace-desk]
-          --length          timer length that raises the desk; repeatable (default 1500)
+          --length          only this timer length raises the desk; repeatable (default: any length)
           --tolerance       allowed difference from a --length (default 3)
           --interval        poll interval (default 0.5, 0.2-2)
           --cofo-desk       cofo-desk executable; with --device or --simulate-state the desk moves
@@ -79,7 +79,6 @@ struct Options {
                 return nil
             }
         }
-        if options.lengths.isEmpty { options.lengths = [1500] }
         guard (options.cofoDesk == nil) == (options.target == nil), options.desk.standSlot != options.desk.sitSlot
         else { return nil }
         return options
