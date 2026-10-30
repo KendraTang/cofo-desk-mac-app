@@ -28,7 +28,8 @@ struct Options {
                           [--idle-pause SECONDS] [--away-reset SECONDS] [--video-limit SECONDS]
                           [--clock] [--length SECONDS]... [--tolerance SECONDS]
                           [--interval SECONDS] [--trace-desk]
-          --clock           a finished Clock timer also ends the sit countdown (needs Accessibility)
+          --clock           a finished Clock timer also ends the sit countdown (needs Accessibility);
+                            the menu switch overrides this once used
           --length          with --clock, only this timer length counts; repeatable (default: any length)
           --tolerance       allowed difference from a --length (default 3)
           --interval        poll interval (default 0.5, 0.2-2)
@@ -190,6 +191,9 @@ func screenIsLocked() -> Bool {
     return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
 }
 
+/// The menu's Clock switch, kept across restarts; --clock only sets the starting value.
+let clockDefaultsKey = "watchClock"
+
 func readPresence() -> Presence {
     // ~0 is kCGAnyInputEventType, which Swift does not import.
     let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
@@ -237,7 +241,7 @@ final class Agent: NSObject {
 
     private let policy: TriggerPolicy
     /// Nil when Clock timers are not watched.
-    private let reader: MenuExtraReader?
+    private var reader: MenuExtraReader?
     private var tracker = TimerTracker()
     private var lastFailure: MenuExtraReader.Failure?
     private var locked = screenIsLocked()
@@ -251,6 +255,7 @@ final class Agent: NSObject {
     private var statusItem: NSStatusItem?
     private var pauseItem: NSMenuItem?
     private var suspendItem: NSMenuItem?
+    private var clockItem: NSMenuItem?
     /// Length of the timer now counting down, from its start event.
     private var countingLength: Int?
     /// Seconds left at which the desk connection is checked before a matching timer ends.
@@ -292,6 +297,9 @@ final class Agent: NSObject {
         _ = add("重新開始倒數", #selector(restartCountdown))
         pauseItem = add("暫停 1 小時", #selector(togglePause))
         suspendItem = add("暫時中斷連線 10 分鐘", #selector(toggleSuspend))
+        menu.addItem(.separator())
+        clockItem = add("對齊 Mac 時鐘的倒數計時", #selector(toggleClock))
+        clockItem?.state = reader == nil ? .off : .on
         item.menu = menu
         item.button?.title = menuBarTitle(.disconnected)
         statusItem = item
@@ -317,6 +325,19 @@ final class Agent: NSObject {
         } else {
             session.suspend(seconds: Self.suspendSeconds)
         }
+    }
+
+    @objc private func toggleClock() {
+        let on = reader == nil
+        reader = on ? MenuExtraReader() : nil
+        tracker = TimerTracker()
+        lastFailure = nil
+        countingLength = nil
+        UserDefaults.standard.set(on, forKey: clockDefaultsKey)
+        clockItem?.state = on ? .on : .off
+        // Asks for Accessibility the first time; the value of kAXTrustedCheckOptionPrompt.
+        let trusted = on ? AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) : false
+        emit(["event": on ? "clock-watch-on" : "clock-watch-off", "accessibility": on ? trusted : NSNull()])
     }
 
     /// Requests a due move now (SIGUSR1, for testing).
@@ -439,9 +460,12 @@ final class Agent: NSObject {
     }
 }
 
-guard let options = Options.parse(Array(CommandLine.arguments.dropFirst())) else {
+guard var options = Options.parse(Array(CommandLine.arguments.dropFirst())) else {
     FileHandle.standardError.write(Data((Options.usage + "\n").utf8))
     exit(2)
+}
+if options.target != nil, let saved = UserDefaults.standard.object(forKey: clockDefaultsKey) as? Bool {
+    options.clock = saved
 }
 
 // The value of kAXTrustedCheckOptionPrompt, which Swift 6 rejects as shared mutable state.
