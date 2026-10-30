@@ -26,7 +26,7 @@ struct Options {
           --stand, --sit    panel memory slots (default M1, M2)
           --nudge           warning jog in mm (default 10, 5-50)
           --window          cancel window after the jog (default 3, 3-60)
-          --lower-after     lower an automatic raise after this long (default 900, 10-7200)
+          --lower-after     lower an automatic raise after this long (default 600, 10-7200)
           --trace-desk      log every raw GATT write and notification (cofo-desk --trace)
         With a desk, the agent stays connected through `cofo-desk session` and checks the
         connection when a matching timer has 15 s left. For testing, SIGUSR1 requests a raise

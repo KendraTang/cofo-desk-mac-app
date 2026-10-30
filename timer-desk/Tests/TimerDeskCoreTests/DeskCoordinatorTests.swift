@@ -28,7 +28,7 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
     #expect(coordinator.handle(.gotoFinished(heightMm: 959), now: 25) == [.note("raised")])
     #expect(coordinator.phase == .idle)
     #expect(coordinator.lowerDue?.raisedMm == 959)
-    #expect(coordinator.lowerDue?.at == 925)
+    #expect(coordinator.lowerDue?.at == 625)
 }
 
 @Test func panelPressDuringWindowCancelsTheRaise() {
@@ -88,21 +88,21 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
 @Test func lowerRunsAfterTheDelayWhenUntouched() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     raise(&coordinator)
-    #expect(coordinator.handle(.tick, now: 899) == [])
-    #expect(coordinator.handle(.tick, now: 900) == [.run(.status)])
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 901) == [.run(.goto(mm: 948))])
-    _ = coordinator.handle(.gotoFinished(heightMm: 948), now: 902)
-    _ = coordinator.handle(.watchSample(heightMm: 948), now: 903)
-    #expect(coordinator.handle(.watchFinished, now: 912) == [.run(.goto(mm: 631))])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 631), now: 920) == [.note("lowered")])
+    #expect(coordinator.handle(.tick, now: 599) == [])
+    #expect(coordinator.handle(.tick, now: 600) == [.run(.status)])
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 601) == [.run(.goto(mm: 948))])
+    _ = coordinator.handle(.gotoFinished(heightMm: 948), now: 602)
+    _ = coordinator.handle(.watchSample(heightMm: 948), now: 603)
+    #expect(coordinator.handle(.watchFinished, now: 612) == [.run(.goto(mm: 631))])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 631), now: 620) == [.note("lowered")])
     #expect(coordinator.lowerDue == nil)
 }
 
 @Test func lowerIsSkippedWhenAdjustedByHand() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     raise(&coordinator)
-    _ = coordinator.handle(.tick, now: 900)
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 900, memoryMm: memory)), now: 901) == [
+    _ = coordinator.handle(.tick, now: 600)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 900, memoryMm: memory)), now: 601) == [
         .note("lower-skipped-adjusted-by-hand"),
     ])
 }
@@ -111,8 +111,8 @@ private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
 @Test func aSmallPanelTapCountsAsAdjusted() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
     raise(&coordinator)
-    _ = coordinator.handle(.tick, now: 900)
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 955, memoryMm: memory)), now: 901) == [
+    _ = coordinator.handle(.tick, now: 600)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 955, memoryMm: memory)), now: 601) == [
         .note("lower-skipped-adjusted-by-hand"),
     ])
 }

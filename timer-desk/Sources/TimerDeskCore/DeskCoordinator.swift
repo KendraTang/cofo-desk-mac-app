@@ -8,7 +8,7 @@ public struct DeskSettings: Sendable {
     /// How long a panel key press can cancel the move after the warning jog.
     public var windowSeconds = 3.0
     /// When an automatic raise is followed by an automatic lower.
-    public var lowerAfterSeconds = 900.0
+    public var lowerAfterSeconds = 600.0
     /// Within this of the stand height counts as already standing.
     public var atHeightMm = 10
     /// Further than this from the raised height counts as adjusted by hand. goto lands within
