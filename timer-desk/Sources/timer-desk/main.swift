@@ -256,6 +256,11 @@ final class Agent: NSObject {
     private var pauseItem: NSMenuItem?
     private var suspendItem: NSMenuItem?
     private var clockItem: NSMenuItem?
+    private var updateItem: NSMenuItem?
+    private var updating: Process?
+    /// Set when a rebuild succeeded: the agent exits once no move is running, and launchd starts
+    /// the new binary (KeepAlive).
+    private var restartPending = false
     /// Length of the timer now counting down, from its start event.
     private var countingLength: Int?
     /// Seconds left at which the desk connection is checked before a matching timer ends.
@@ -300,6 +305,8 @@ final class Agent: NSObject {
         menu.addItem(.separator())
         clockItem = add("對齊 Mac 時鐘的倒數計時", #selector(toggleClock))
         clockItem?.state = reader == nil ? .off : .on
+        menu.addItem(.separator())
+        updateItem = add("從原始碼更新並重新啟動", #selector(update))
         item.menu = menu
         item.button?.title = menuBarTitle(.disconnected)
         statusItem = item
@@ -338,6 +345,45 @@ final class Agent: NSObject {
         // Asks for Accessibility the first time; the value of kAXTrustedCheckOptionPrompt.
         let trusted = on ? AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) : false
         emit(["event": on ? "clock-watch-on" : "clock-watch-off", "accessibility": on ? trusted : NSNull()])
+    }
+
+    /// Rebuilds from the repo this binary was built in (timer-desk/build.sh next to bin/).
+    @objc private func update() {
+        guard updating == nil, !restartPending, let executable = Bundle.main.executableURL else { return }
+        let script = executable.resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("build.sh")
+        let process = Process()
+        process.executableURL = script
+        process.standardOutput = FileHandle.standardOutput
+        process.standardError = FileHandle.standardError
+        process.terminationHandler = { process in
+            let status = process.terminationStatus
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.updateFinished(status) } }
+        }
+        emit(["event": "update-started", "script": script.path])
+        do {
+            try process.run()
+        } catch {
+            updateFinished(-1)
+            return
+        }
+        updating = process
+        updateItem?.title = "更新中⋯⋯"
+        updateItem?.isEnabled = false
+    }
+
+    private func updateFinished(_ status: Int32) {
+        updating = nil
+        guard status == 0 else {
+            emit(["event": "update-failed", "status": Int(status)])
+            notifyFailure("更新失敗，詳見 ~/Library/Logs/timer-desk.log")
+            updateItem?.title = "從原始碼更新並重新啟動"
+            updateItem?.isEnabled = true
+            return
+        }
+        emit(["event": "update-built"])
+        restartPending = true
+        updateItem?.title = "等桌子停下後重新啟動⋯⋯"
     }
 
     /// Requests a due move now (SIGUSR1, for testing).
@@ -389,6 +435,10 @@ final class Agent: NSObject {
             var fields: [String: Any] = ["event": videoPlaying ? "video-signal-on" : "video-signal-off"]
             if videoPlaying { fields["holders"] = displaySleepHolders() }
             emit(fields)
+        }
+        if restartPending && coordinator?.phase ?? .idle == .idle {
+            emit(["event": "restarting-for-update"])
+            exit(0)
         }
         session?.tick(now: ProcessInfo.processInfo.systemUptime)
         applyCycle { $0.tick(now: now, presence: presence) }
