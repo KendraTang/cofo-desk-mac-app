@@ -1,4 +1,6 @@
 #!/bin/bash
+# Written for the agent before the sit and stand cycle (2026-10-31): SIGUSR2 is gone and SIGUSR1 now only
+# makes the countdown due. Kept as the record of how Gate 3 ran; see cycle-cases.sh.
 # Gate 3 walkthrough on the real desk. Rebuilds and reinstalls the agent (with desk tracing),
 # waits for its desk connection, then runs the cases. Run it from a regular terminal, not tmux,
 # so codesign can reach the keychain.

@@ -152,6 +152,7 @@ class SessionTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         state = Path(self.temporary.name) / "state.json"
+        self.heights = []
         self.process = subprocess.Popen(
             [sys.executable, "-m", "cofo_desk", "--json", "--simulate", "--state-file", str(state), "session"],
             cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -164,7 +165,22 @@ class SessionTest(unittest.TestCase):
         self.process.stdin.flush()
 
     def read(self):
-        return json.loads(self.process.stdout.readline())
+        """The next reply, setting aside height reports."""
+        while True:
+            line = json.loads(self.process.stdout.readline())
+            if line.get("event") != "height":
+                return line
+            self.heights.append(line["height_mm"])
+
+    def test_height_changes_are_reported_during_a_move(self):
+        self.read()
+        self.send({"id": 1, "command": "goto", "mm": 800, "timeout": 10})
+        self.read()
+        self.send({"id": 2, "command": "watch", "seconds": 1.2})
+        while "result" not in self.read():
+            pass
+        self.assertTrue(self.heights)
+        self.assertLessEqual(abs(self.heights[-1] - 800), 1)
 
     def test_commands_share_one_connection_until_eof(self):
         ready = self.read()

@@ -149,6 +149,18 @@ def write_line(value):
 
 
 SESSION_LIVENESS_SECONDS = 1.0
+SESSION_HEIGHT_SECONDS = 0.5
+
+
+async def report_heights(desk):
+    """Sends {"event": "height"} when the height changes, including moves from the panel keys."""
+    reported = desk.height_mm()
+    while True:
+        await asyncio.sleep(SESSION_HEIGHT_SECONDS)
+        height = desk.height_mm()
+        if height is not None and height != reported:
+            reported = height
+            write_line({"event": "height", "height_mm": round(height, 2)})
 
 
 async def session_command(desk, request):
@@ -190,13 +202,15 @@ async def session_command(desk, request):
 
 async def session(desk):
     """Holds one connection. Reads {"id", "command", ...} lines from stdin and runs one at a time;
-    {"command": "cancel"} cancels the running one. Ends at EOF, or with an error when the link drops."""
+    {"command": "cancel"} cancels the running one. Also reports height changes as they happen.
+    Ends at EOF, or with an error when the link drops."""
     loop = asyncio.get_running_loop()
     reader = asyncio.StreamReader()
     await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader), sys.stdin)
     await desk.refresh()
     write_line({"event": "ready", "status": desk.snapshot()})
     current = None
+    heights = asyncio.create_task(report_heights(desk))
     try:
         while True:
             try:
@@ -221,9 +235,10 @@ async def session(desk):
             else:
                 current = asyncio.create_task(session_command(desk, request))
     finally:
+        heights.cancel()
         if current and not current.done():
             current.cancel()
-            await asyncio.gather(current, return_exceptions=True)
+        await asyncio.gather(heights, *([current] if current else []), return_exceptions=True)
 
 
 async def run(args, stops=None):

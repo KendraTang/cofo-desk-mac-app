@@ -7,13 +7,8 @@ public struct DeskSettings: Sendable {
     public var nudgeMm = 10
     /// How long a panel key press can cancel the move after the warning jog.
     public var windowSeconds = 3.0
-    /// When an automatic raise is followed by an automatic lower.
-    public var lowerAfterSeconds = 600.0
-    /// Within this of the stand height counts as already standing.
+    /// Within this of the target height counts as already there.
     public var atHeightMm = 10
-    /// Further than this from the raised height counts as adjusted by hand. goto lands within
-    /// 1 mm on the real desk; a brief panel tap moved it 7 mm (2026-10-21).
-    public var adjustedMm = 3
     /// A height change this large during the window counts as a panel key press.
     public var cancelMm = 5
 
@@ -39,9 +34,7 @@ public enum DeskCommand: Equatable, Sendable {
 
 public enum CoordinatorInput: Equatable, Sendable {
     case raiseRequested
-    /// Moves a scheduled lower to now (for testing).
-    case lowerNow
-    case tick
+    case lowerRequested
     case screenLocked
     case status(DeskStatus)
     case gotoFinished(heightMm: Int)
@@ -56,22 +49,21 @@ public enum CoordinatorOutput: Equatable, Sendable {
     case cancelCommand
     case note(String)
     case notifyFailure(String)
+    case finished(MoveOutcome)
 }
 
 /// The raise and lower flows: status, warning jog, cancel window, move.
 ///
-/// A raise only runs when the desk is below the stand height. After an automatic raise, a lower
-/// is scheduled; it only runs if the desk is still at the raised height. A locked screen aborts
-/// whatever is running and drops the scheduled lower. Inputs that do not fit the current phase
-/// (such as results of a cancelled command) are ignored.
+/// A move is skipped when the desk is already at the target height. A locked screen aborts whatever
+/// is running. Inputs that do not fit the current phase (such as results of a cancelled command)
+/// are ignored. Every requested move ends in one `.finished`.
 public struct DeskCoordinator {
     public enum Purpose: Equatable, Sendable {
         case raise
-        case lower(raisedMm: Int)
+        case lower
 
         var name: String {
-            if case .raise = self { return "raise" }
-            return "lower"
+            self == .raise ? "raise" : "lower"
         }
     }
 
@@ -86,42 +78,27 @@ public struct DeskCoordinator {
 
     public let settings: DeskSettings
     public private(set) var phase = Phase.idle
-    public private(set) var lowerDue: (raisedMm: Int, at: TimeInterval)?
 
     public init(settings: DeskSettings) {
         self.settings = settings
     }
 
-    public mutating func handle(_ input: CoordinatorInput, now: TimeInterval) -> [CoordinatorOutput] {
+    public mutating func handle(_ input: CoordinatorInput) -> [CoordinatorOutput] {
         switch (input, phase) {
+        case (.screenLocked, .idle):
+            return []
         case (.screenLocked, _):
-            var outputs: [CoordinatorOutput] = []
-            if lowerDue != nil {
-                lowerDue = nil
-                outputs.append(.note("lower-dropped-screen-locked"))
-            }
-            if phase != .idle {
-                phase = .idle
-                outputs += [.cancelCommand, .note("aborted-screen-locked")]
-            }
-            return outputs
+            phase = .idle
+            return [.cancelCommand, .note("aborted-screen-locked"), .finished(.aborted)]
 
         case (.raiseRequested, .idle):
             phase = .checking(.raise)
             return [.run(.status)]
-        case (.raiseRequested, _):
-            return [.note("raise-skipped-busy")]
-
-        case (.lowerNow, _):
-            guard let due = lowerDue else { return [.note("lower-now-ignored-none-scheduled")] }
-            lowerDue = (due.raisedMm, now)
-            return []
-
-        case (.tick, .idle):
-            guard let due = lowerDue, now >= due.at else { return [] }
-            lowerDue = nil
-            phase = .checking(.lower(raisedMm: due.raisedMm))
+        case (.lowerRequested, .idle):
+            phase = .checking(.lower)
             return [.run(.status)]
+        case (.raiseRequested, _), (.lowerRequested, _):
+            return [.note("move-skipped-busy")]
 
         case let (.status(status), .checking(purpose)):
             return check(status, for: purpose)
@@ -136,7 +113,7 @@ public struct DeskCoordinator {
                 return []
             }
             phase = .idle
-            return [.cancelCommand, .note("\(purpose.name)-cancelled-by-panel")]
+            return [.cancelCommand, .note("\(purpose.name)-cancelled-by-panel"), .finished(.cancelled)]
 
         case let (.watchFinished, .window(purpose, target, _, sampled)):
             guard sampled else { return fail(purpose, "no height during the cancel window") }
@@ -145,11 +122,7 @@ public struct DeskCoordinator {
 
         case let (.gotoFinished(height), .moving(purpose, _)):
             phase = .idle
-            if case .raise = purpose {
-                lowerDue = (height, now + settings.lowerAfterSeconds)
-                return [.note("raised")]
-            }
-            return [.note("lowered")]
+            return [.note(purpose == .raise ? "raised" : "lowered"), .finished(.moved(heightMm: height))]
 
         case let (.commandFailed(message), .moving(purpose, _)):
             // On the real desk this is usually a panel press: the desk stops short, keeps reporting
@@ -173,17 +146,17 @@ public struct DeskCoordinator {
             }
             if height >= stand - settings.atHeightMm {
                 phase = .idle
-                return [.note("raise-skipped-already-standing")]
+                return [.note("raise-skipped-already-standing"), .finished(.skipped)]
             }
             phase = .warning(purpose, targetMm: stand)
             return [.run(.goto(mm: height + settings.nudgeMm))]
-        case let .lower(raised):
+        case .lower:
             guard let sit = status.memoryMm[settings.sitSlot] else {
                 return fail(purpose, "\(settings.sitSlot) memory height is not set")
             }
-            if abs(height - raised) > settings.adjustedMm {
+            if height <= sit + settings.atHeightMm {
                 phase = .idle
-                return [.note("lower-skipped-adjusted-by-hand")]
+                return [.note("lower-skipped-already-sitting"), .finished(.skipped)]
             }
             phase = .warning(purpose, targetMm: sit)
             return [.run(.goto(mm: height - settings.nudgeMm))]
@@ -192,7 +165,7 @@ public struct DeskCoordinator {
 
     private mutating func fail(_ purpose: Purpose, _ message: String) -> [CoordinatorOutput] {
         phase = .idle
-        return [.note("\(purpose.name)-failed"), .notifyFailure("\(purpose.name == "raise" ? "升桌" : "降桌")失敗：\(message)")]
+        return [.note("\(purpose.name)-failed"), .notifyFailure("\(purpose == .raise ? "升桌" : "降桌")失敗：\(message)"), .finished(.failed)]
     }
 
     private func purpose(of phase: Phase) -> Purpose {

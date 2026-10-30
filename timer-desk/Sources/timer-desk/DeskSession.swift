@@ -2,7 +2,7 @@ import Foundation
 import TimerDeskCore
 
 /// Keeps one `cofo-desk session` process connected to the desk and turns its JSON lines into
-/// coordinator inputs. If the session exits (connection lost, desk busy with the phone app) it is
+/// coordinator inputs and connection updates. If the session exits (connection lost, desk busy with the phone app) it is
 /// restarted with backoff; `ensureConnected()` restarts it at once. One command runs at a time; a
 /// cancelled command's replies are dropped.
 @MainActor
@@ -10,6 +10,9 @@ final class DeskSession {
     private let executable: String
     private let target: [String]
     private let deliver: (CoordinatorInput) -> Void
+    private let connected: (DeskStatus) -> Void
+    private let disconnected: () -> Void
+    private let heightChanged: (Int) -> Void
 
     private var process: Process?
     private var input: FileHandle?
@@ -26,25 +29,45 @@ final class DeskSession {
     private var queued: DeskCommand?
 
     private var restartAt: TimeInterval = 0
+    private var suspendedUntil: TimeInterval = 0
     private var backoff: TimeInterval = 5
     private static let maxBackoff: TimeInterval = 60
 
-    init(executable: String, target: [String], deliver: @escaping (CoordinatorInput) -> Void) {
+    init(executable: String, target: [String], deliver: @escaping (CoordinatorInput) -> Void,
+         connected: @escaping (DeskStatus) -> Void, disconnected: @escaping () -> Void,
+         heightChanged: @escaping (Int) -> Void) {
         self.executable = executable
         self.target = target
         self.deliver = deliver
+        self.connected = connected
+        self.disconnected = disconnected
+        self.heightChanged = heightChanged
     }
 
-    var isReady: Bool { ready }
+    var isSuspended: Bool { ProcessInfo.processInfo.systemUptime < suspendedUntil }
 
     /// Restarts a stopped session when its backoff has passed.
     func tick(now: TimeInterval) {
-        if process == nil && now >= restartAt { start() }
+        if process == nil && now >= restartAt && !isSuspended { start() }
+    }
+
+    /// Drops the connection for a while so another app can use the desk. EOF ends the session.
+    func suspend(seconds: TimeInterval) {
+        suspendedUntil = ProcessInfo.processInfo.systemUptime + seconds
+        restartAt = 0
+        try? input?.close()
+        input = nil
+        emit(["event": "desk-session-suspended", "seconds": seconds])
+    }
+
+    func resume() {
+        suspendedUntil = 0
+        restartAt = 0
     }
 
     /// Starts the session now if it is not running, skipping any backoff.
     func ensureConnected() {
-        if process == nil {
+        if process == nil && !isSuspended {
             emit(["event": "desk-session-ensure"])
             start()
         }
@@ -150,7 +173,12 @@ final class DeskSession {
             let status = line["status"] as? [String: Any]
             emit(["event": "desk-session-ready", "height_mm": status?["height_mm"] ?? NSNull(),
                   "memory_mm": status?["memory_mm"] ?? NSNull()])
+            if let parsed = status.flatMap(Self.deskStatus) { connected(parsed) }
             startQueued()
+            return
+        }
+        if line["event"] as? String == "height" {
+            if let height = line["height_mm"] as? Double { heightChanged(Int(height.rounded())) }
             return
         }
         if line["id"] == nil, let error = line["error"] as? String {
@@ -185,6 +213,7 @@ final class DeskSession {
         input = nil
         output = nil
         ready = false
+        disconnected()
         emit(["event": "desk-session-exited", "status": Int(status), "error": lastError ?? NSNull(),
               "retry_seconds": backoff])
         scheduleRestart()
@@ -213,15 +242,20 @@ final class DeskSession {
         send(next)
     }
 
+    private static func deskStatus(_ result: [String: Any]) -> DeskStatus? {
+        guard let height = result["height_mm"] as? Double else { return nil }
+        var memory: [String: Int] = [:]
+        for (slot, value) in result["memory_mm"] as? [String: Any] ?? [:] {
+            if let mm = value as? Double { memory[slot] = Int(mm.rounded()) }
+        }
+        return DeskStatus(heightMm: Int(height.rounded()), memoryMm: memory)
+    }
+
     private static func input(for command: DeskCommand, result: [String: Any]) -> CoordinatorInput {
         switch command {
         case .status:
-            guard let height = result["height_mm"] as? Double else { return .commandFailed("status had no height") }
-            var memory: [String: Int] = [:]
-            for (slot, value) in result["memory_mm"] as? [String: Any] ?? [:] {
-                if let mm = value as? Double { memory[slot] = Int(mm.rounded()) }
-            }
-            return .status(DeskStatus(heightMm: Int(height.rounded()), memoryMm: memory))
+            guard let status = deskStatus(result) else { return .commandFailed("status had no height") }
+            return .status(status)
         case .goto:
             guard let height = (result["status"] as? [String: Any])?["height_mm"] as? Double else {
                 return .commandFailed("goto had no final height")

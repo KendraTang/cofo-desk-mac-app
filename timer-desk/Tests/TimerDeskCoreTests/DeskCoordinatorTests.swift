@@ -7,153 +7,114 @@ private func sitting(_ height: Int = 631) -> CoordinatorInput {
     .status(DeskStatus(heightMm: height, memoryMm: memory))
 }
 
-/// Runs a raise through the cancel window without a key press, ending at M1.
-private func raise(_ coordinator: inout DeskCoordinator, now: Double = 0) {
-    _ = coordinator.handle(.raiseRequested, now: now)
-    _ = coordinator.handle(sitting(), now: now)
-    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: now)
-    _ = coordinator.handle(.watchSample(heightMm: 641), now: now)
-    _ = coordinator.handle(.watchFinished, now: now)
-    _ = coordinator.handle(.gotoFinished(heightMm: 959), now: now)
-}
-
-@Test func raiseJogsWaitsThenMovesToStandAndSchedulesLower() {
+@Test func raiseJogsWaitsThenMovesToStand() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    #expect(coordinator.handle(.raiseRequested, now: 0) == [.run(.status)])
-    #expect(coordinator.handle(sitting(), now: 1) == [.run(.goto(mm: 641))])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 641), now: 3) == [.run(.watch(seconds: 3))])
-    #expect(coordinator.handle(.watchSample(heightMm: 641), now: 4) == [])
-    #expect(coordinator.handle(.watchSample(heightMm: 643), now: 5) == [])
-    #expect(coordinator.handle(.watchFinished, now: 14) == [.run(.goto(mm: 959))])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 959), now: 25) == [.note("raised")])
+    #expect(coordinator.handle(.raiseRequested) == [.run(.status)])
+    #expect(coordinator.handle(sitting()) == [.run(.goto(mm: 641))])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 641)) == [.run(.watch(seconds: 3))])
+    #expect(coordinator.handle(.watchSample(heightMm: 641)) == [])
+    #expect(coordinator.handle(.watchSample(heightMm: 643)) == [])
+    #expect(coordinator.handle(.watchFinished) == [.run(.goto(mm: 959))])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 959)) == [.note("raised"), .finished(.moved(heightMm: 959))])
     #expect(coordinator.phase == .idle)
-    #expect(coordinator.lowerDue?.raisedMm == 959)
-    #expect(coordinator.lowerDue?.at == 625)
 }
 
-@Test func panelPressDuringWindowCancelsTheRaise() {
+@Test func lowerJogsWaitsThenMovesToSit() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
-    _ = coordinator.handle(.watchSample(heightMm: 641), now: 0)
-    #expect(coordinator.handle(.watchSample(heightMm: 630), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
+    #expect(coordinator.handle(.lowerRequested) == [.run(.status)])
+    #expect(coordinator.handle(sitting(958)) == [.run(.goto(mm: 948))])
+    _ = coordinator.handle(.gotoFinished(heightMm: 948))
+    _ = coordinator.handle(.watchSample(heightMm: 948))
+    #expect(coordinator.handle(.watchFinished) == [.run(.goto(mm: 631))])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 631)) == [.note("lowered"), .finished(.moved(heightMm: 631))])
+}
+
+@Test func panelPressDuringWindowCancelsTheMove() {
+    var coordinator = DeskCoordinator(settings: DeskSettings())
+    _ = coordinator.handle(.raiseRequested)
+    _ = coordinator.handle(sitting())
+    _ = coordinator.handle(.gotoFinished(heightMm: 641))
+    _ = coordinator.handle(.watchSample(heightMm: 641))
+    #expect(coordinator.handle(.watchSample(heightMm: 630)) == [
+        .cancelCommand, .note("raise-cancelled-by-panel"), .finished(.cancelled),
+    ])
     // The cancelled watch's own result arrives afterwards and is ignored.
-    #expect(coordinator.handle(.commandFailed("Interrupted by SIGTERM"), now: 2) == [])
-    #expect(coordinator.handle(.watchFinished, now: 2) == [])
-    #expect(coordinator.lowerDue == nil)
+    #expect(coordinator.handle(.commandFailed("Interrupted by SIGTERM")) == [])
+    #expect(coordinator.handle(.watchFinished) == [])
 }
 
 /// The real-desk miss on 2026-10-21: M2 pressed before the first watch sample arrived.
 @Test func panelPressBeforeTheFirstSampleStillCancels() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
-    #expect(coordinator.handle(.watchSample(heightMm: 631), now: 1) == [.cancelCommand, .note("raise-cancelled-by-panel")])
+    _ = coordinator.handle(.raiseRequested)
+    _ = coordinator.handle(sitting())
+    _ = coordinator.handle(.gotoFinished(heightMm: 641))
+    #expect(coordinator.handle(.watchSample(heightMm: 631)) == [
+        .cancelCommand, .note("raise-cancelled-by-panel"), .finished(.cancelled),
+    ])
 }
 
-@Test func lowerNowRunsTheScheduledLowerOnTheNextTick() {
+@Test func alreadyAtTheTargetSkipsTheMove() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    #expect(coordinator.handle(.lowerNow, now: 0) == [.note("lower-now-ignored-none-scheduled")])
-    raise(&coordinator)
-    #expect(coordinator.handle(.lowerNow, now: 30) == [])
-    #expect(coordinator.handle(.tick, now: 30) == [.run(.status)])
-}
-
-@Test func alreadyStandingSkipsTheRaise() {
-    var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    #expect(coordinator.handle(sitting(950), now: 0) == [.note("raise-skipped-already-standing")])
+    _ = coordinator.handle(.raiseRequested)
+    #expect(coordinator.handle(sitting(950)) == [.note("raise-skipped-already-standing"), .finished(.skipped)])
+    _ = coordinator.handle(.lowerRequested)
+    #expect(coordinator.handle(sitting(640)) == [.note("lower-skipped-already-sitting"), .finished(.skipped)])
     #expect(coordinator.phase == .idle)
 }
 
 @Test func missingMemoryHeightFailsWithANotification() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 631, memoryMm: [:])), now: 0) == [
-        .note("raise-failed"), .notifyFailure("升桌失敗：M1 memory height is not set"),
+    _ = coordinator.handle(.raiseRequested)
+    #expect(coordinator.handle(.status(DeskStatus(heightMm: 631, memoryMm: [:]))) == [
+        .note("raise-failed"), .notifyFailure("升桌失敗：M1 memory height is not set"), .finished(.failed),
     ])
 }
 
 @Test func commandFailureNotifiesAndReturnsToIdle() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    #expect(coordinator.handle(.commandFailed("Device disconnected"), now: 0) == [
-        .note("raise-failed"), .notifyFailure("升桌失敗：Device disconnected"),
+    _ = coordinator.handle(.raiseRequested)
+    #expect(coordinator.handle(.commandFailed("Device disconnected")) == [
+        .note("raise-failed"), .notifyFailure("升桌失敗：Device disconnected"), .finished(.failed),
     ])
     #expect(coordinator.phase == .idle)
 }
 
-@Test func lowerRunsAfterTheDelayWhenUntouched() {
-    var coordinator = DeskCoordinator(settings: DeskSettings())
-    raise(&coordinator)
-    #expect(coordinator.handle(.tick, now: 599) == [])
-    #expect(coordinator.handle(.tick, now: 600) == [.run(.status)])
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 958, memoryMm: memory)), now: 601) == [.run(.goto(mm: 948))])
-    _ = coordinator.handle(.gotoFinished(heightMm: 948), now: 602)
-    _ = coordinator.handle(.watchSample(heightMm: 948), now: 603)
-    #expect(coordinator.handle(.watchFinished, now: 612) == [.run(.goto(mm: 631))])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 631), now: 620) == [.note("lowered")])
-    #expect(coordinator.lowerDue == nil)
-}
-
-@Test func lowerIsSkippedWhenAdjustedByHand() {
-    var coordinator = DeskCoordinator(settings: DeskSettings())
-    raise(&coordinator)
-    _ = coordinator.handle(.tick, now: 600)
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 900, memoryMm: memory)), now: 601) == [
-        .note("lower-skipped-adjusted-by-hand"),
-    ])
-}
-
-/// The real-desk case: a brief panel tap moved the raised desk from 958 to 951.
-@Test func aSmallPanelTapCountsAsAdjusted() {
-    var coordinator = DeskCoordinator(settings: DeskSettings())
-    raise(&coordinator)
-    _ = coordinator.handle(.tick, now: 600)
-    #expect(coordinator.handle(.status(DeskStatus(heightMm: 955, memoryMm: memory)), now: 601) == [
-        .note("lower-skipped-adjusted-by-hand"),
-    ])
-}
-
 @Test func aMoveThatStopsShortNamesThePanel() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
-    _ = coordinator.handle(.watchSample(heightMm: 641), now: 1)
-    _ = coordinator.handle(.watchFinished, now: 10)
-    #expect(coordinator.handle(.commandFailed("Height telemetry is stale; movement stopped"), now: 30) == [
+    _ = coordinator.handle(.raiseRequested)
+    _ = coordinator.handle(sitting())
+    _ = coordinator.handle(.gotoFinished(heightMm: 641))
+    _ = coordinator.handle(.watchSample(heightMm: 641))
+    _ = coordinator.handle(.watchFinished)
+    #expect(coordinator.handle(.commandFailed("Height telemetry is stale; movement stopped")) == [
         .note("raise-failed"),
         .notifyFailure("升桌失敗：沒有到達 M1，可能按了面板鍵（Height telemetry is stale; movement stopped）"),
+        .finished(.failed),
     ])
 }
 
-@Test func lockingAbortsAMoveAndDropsTheScheduledLower() {
+@Test func lockingAbortsAMove() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    raise(&coordinator)
-    #expect(coordinator.handle(.screenLocked, now: 10) == [.note("lower-dropped-screen-locked")])
-    #expect(coordinator.handle(.tick, now: 2000) == [])
-
-    _ = coordinator.handle(.raiseRequested, now: 2000)
-    _ = coordinator.handle(sitting(), now: 2000)
-    #expect(coordinator.handle(.screenLocked, now: 2001) == [.cancelCommand, .note("aborted-screen-locked")])
-    #expect(coordinator.handle(.gotoFinished(heightMm: 641), now: 2002) == [])
+    #expect(coordinator.handle(.screenLocked) == [])
+    _ = coordinator.handle(.raiseRequested)
+    _ = coordinator.handle(sitting())
+    #expect(coordinator.handle(.screenLocked) == [.cancelCommand, .note("aborted-screen-locked"), .finished(.aborted)])
+    #expect(coordinator.handle(.gotoFinished(heightMm: 641)) == [])
 }
 
-@Test func raiseRequestWhileBusyIsSkipped() {
+@Test func moveRequestWhileBusyIsSkipped() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    #expect(coordinator.handle(.raiseRequested, now: 1) == [.note("raise-skipped-busy")])
+    _ = coordinator.handle(.raiseRequested)
+    #expect(coordinator.handle(.lowerRequested) == [.note("move-skipped-busy")])
 }
 
 @Test func windowWithoutAnySampleFails() {
     var coordinator = DeskCoordinator(settings: DeskSettings())
-    _ = coordinator.handle(.raiseRequested, now: 0)
-    _ = coordinator.handle(sitting(), now: 0)
-    _ = coordinator.handle(.gotoFinished(heightMm: 641), now: 0)
-    #expect(coordinator.handle(.watchFinished, now: 10) == [
-        .note("raise-failed"), .notifyFailure("升桌失敗：no height during the cancel window"),
+    _ = coordinator.handle(.raiseRequested)
+    _ = coordinator.handle(sitting())
+    _ = coordinator.handle(.gotoFinished(heightMm: 641))
+    #expect(coordinator.handle(.watchFinished) == [
+        .note("raise-failed"), .notifyFailure("升桌失敗：no height during the cancel window"), .finished(.failed),
     ])
 }
