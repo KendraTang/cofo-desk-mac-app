@@ -14,3 +14,4 @@ probes/out/perm-probe
 probes/out/dev.cofodesk.*
 timer-desk/.build/
 timer-desk/bin/
+probes/out/cycle-cases.log

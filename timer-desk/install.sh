@@ -35,5 +35,10 @@ $ARGS    </array>
 EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+# bootout returns before the old process has gone, and bootstrap fails until it has.
+for _ in 1 2 3 4 5 6 7 8 9; do
+    launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null && break
+    sleep 1
+done
+launchctl print "gui/$(id -u)/$LABEL" >/dev/null || launchctl bootstrap "gui/$(id -u)" "$PLIST"
 echo "Loaded $LABEL; logging to $LOG"

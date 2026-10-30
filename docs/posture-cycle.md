@@ -37,7 +37,14 @@
 - [`DeskCoordinator`](../timer-desk/Sources/TimerDeskCore/DeskCoordinator.swift)：一次移動的流程。
 - `cofo-desk session` 在高度改變時主動送 `{"event":"height","height_mm":N}`，程式才知道面板手動調過。
 
+## 驗收
+
+2026-10-31 用 [cycle-cases.sh](../probes/cycle-cases.sh) 在真桌上跑過：升到 M1、降到 M2、取消窗口內按面板後延後、沒操作時不動（有操作後才點動，歸零訊號到移動約隔 14 秒，等的是使用者）、手動按 M2 跨過中點後切換成坐姿倒數。
+
 ## 未驗證
+
+- 自然跑完 25 分鐘與 10 分鐘的倒數（驗收時用訊號讓倒數立刻歸零）。
+- 選單的三個項目。
 
 - 影片訊號：真實播放時各瀏覽器和播放器是否都會要求螢幕不暗，Zoom 或防休眠工具會不會誤判。訊號開啟時 log 會寫 `video-signal-on` 和持有者，用來判斷。2026-10-31 已發現 Universal Control 會自己持有這個訊號（`com.apple.universalcontrol.preventDisplaySleep`），所以排除；`caffeinate -d` 同樣會觸發，沒有排除。
 - 系統把 `PreventUserIdleDisplaySleep` 算在影片上是推論，不是 Apple 保證的語意。
