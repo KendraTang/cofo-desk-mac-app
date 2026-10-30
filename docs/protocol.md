@@ -1,5 +1,7 @@
 # COFO BLE 調查與實機接入
 
+原始資料（REA Evidence、原 App 畫面與商店截圖）不放在公開 repo，存在維護者本機的 `local_docs/reverse-engineering/`；下文以 `資料夾/檔名` 註明出處。需要時可用 REA 重新分析原 APK 取得。
+
 目前已透過使用者模擬器中的原 App 1.0.10 及 REA 取得三組 GATT UUID、初始化、升降／停止／目標高度 bytes 和通知解析程式碼，見 [逆向調查與 Evidence](reverse-engineering.md)。尚未取得真桌封包，因此 incoming 完整 framing、checksum、分片、時序與實體停止保證仍未驗證。這不是廠商公開 SDK。
 
 ## 已可使用的診斷
@@ -8,7 +10,7 @@ App → 控制 → 裝置與 BLE 診斷 → 掃描。Android 12 以上要求附�
 
 選擇裝置後限時連線，探索 GATT services；列出 UUID 與 characteristic properties 後關閉 GATT。可用「複製服務資訊」保留結果。這只證明裝置可被發現／探索，不能識別為相容桌子。
 
-官方 Premium 手冊的實體面板操作：同按記憶 `1`、`3` 超過 3 秒切換 Bluetooth，顯示 `BLE` 為開、`OFF` 為關。此步驟不適用於尚未確認的其他型號。[手冊 PDF 第 72 頁的研究圖](research-assets/manual-page-72.png)
+官方 Premium 手冊的實體面板操作：同按記憶 `1`、`3` 超過 3 秒切換 Bluetooth，顯示 `BLE` 為開、`OFF` 為關。此步驟不適用於尚未確認的其他型號。手冊 PDF 第 72 頁的研究圖（`research-assets/manual-page-72.png`）
 
 ## 捕捉資料的順序
 
