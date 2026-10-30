@@ -135,7 +135,7 @@ grep -v TRACE ~/Library/Logs/timer-desk.log | tail -5                        # �
 
 ```sh
 python3 -m unittest discover -s tests -v       # cofo-desk，用模擬桌和封包 fixture
-timer-desk/test.sh                              # 番茄鐘程式的單元測試（含真實紀錄重播）
+timer-desk/test.sh                              # 自動升降程式的單元測試（含真實紀錄重播）
 ./gradlew :app:testDebugUnitTest :app:lintDebug
 ./gradlew :app:connectedDebugAndroidTest       # 需要已啟動的模擬器
 python3 scripts/emulator-permission-smoke.py --serial emulator-5554
