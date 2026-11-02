@@ -74,7 +74,7 @@ tail -f ~/Library/Logs/timer-desk.log              # JSON Lines 事件紀錄
 timer-desk/uninstall.sh                            # 停止並移除 LaunchAgent
 ```
 
-不加 `--cofo-desk` 時只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因。加上 `--cofo-desk PATH --device UUID` 後會真的升降；`--simulate-state FILE` 改用模擬桌。其他參數：`--stand`／`--sit`（預設 M1／M2）、`--nudge`（mm）、`--window`、`--lower-after`（秒）。測試時不必等 Clock：`launchctl kill SIGUSR1 gui/$(id -u)/dev.cofodesk.timer-desk` 要求升起，`SIGUSR2` 讓已排程的下降立刻執行。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔。
+（2026-11-03 起已改成 `.app` 加設定視窗，下面的參數和 LaunchAgent 是當時的做法，現況見 [自動坐站週期](posture-cycle.md)。）不加 `--cofo-desk` 時只記錄事件，計時完成時寫 `"decision": "would-raise"` 或 `"ignore"` 及原因。加上 `--cofo-desk PATH --device UUID` 後會真的升降；`--simulate-state FILE` 改用模擬桌。其他參數：`--stand`／`--sit`（預設 M1／M2）、`--nudge`（mm）、`--window`、`--lower-after`（秒）。測試時不必等 Clock：`launchctl kill SIGUSR1 gui/$(id -u)/dev.cofodesk.timer-desk` 要求升起，`SIGUSR2` 讓已排程的下降立刻執行。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔。
 
 新的執行檔第一次啟動時，要在「輔助使用」清單中允許 `timer-desk`；第一次控制桌子時要允許藍牙。
 

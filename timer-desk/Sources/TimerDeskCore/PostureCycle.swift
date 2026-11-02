@@ -68,13 +68,15 @@ public enum CycleDisplay: Equatable, Sendable {
 /// the user is present. A due move is requested through `.raise` or `.lower`, and the next
 /// countdown starts when `moveFinished` reports the result.
 public struct PostureCycle {
-    public let settings: CycleSettings
+    public private(set) var settings: CycleSettings
     private var connected = false
     private var standMm: Int?
     private var sitMm: Int?
     private var heightMm: Int?
     private var posture: Posture?
     private var remaining = 0.0
+    /// Length of the running countdown, so a new setting can keep the time already passed.
+    private var running = Countdown.sit
     private var moving = false
     private var pausedUntil: TimeInterval?
     private var lastTick: TimeInterval?
@@ -82,8 +84,38 @@ public struct PostureCycle {
     private var isAway = false
     private var awaySeconds = 0.0
 
+    private enum Countdown {
+        case sit, stand, snooze
+    }
+
     public init(settings: CycleSettings) {
         self.settings = settings
+    }
+
+    /// Time already passed stays passed: a length shorter than that makes the countdown due now.
+    public mutating func update(settings new: CycleSettings) {
+        let passed = length(of: running, in: settings) - remaining
+        settings = new
+        if !moving { remaining = max(0, length(of: running, in: new) - passed) }
+    }
+
+    /// The heights to move between changed; they also decide the posture.
+    public mutating func setTargets(standMm: Int?, sitMm: Int?) -> [CycleOutput] {
+        self.standMm = standMm
+        self.sitMm = sitMm
+        return moving ? [] : settle()
+    }
+
+    /// The user is moving the desk from the menu: the countdown holds until it ends.
+    public mutating func manualMoveStarted() {
+        moving = true
+    }
+
+    /// Like a move from the panel: only crossing the midpoint starts a new countdown.
+    public mutating func manualMoveFinished(heightMm: Int?) -> [CycleOutput] {
+        moving = false
+        if let heightMm { self.heightMm = heightMm }
+        return settle()
     }
 
     public mutating func deskConnected(heightMm: Int, standMm: Int?, sitMm: Int?) -> [CycleOutput] {
@@ -157,6 +189,7 @@ public struct PostureCycle {
             return outputs + startCountdown(posture)
         case .cancelled, .failed, .aborted:
             remaining = settings.snoozeSeconds
+            running = .snooze
             return outputs + [.note("snoozed")]
         }
     }
@@ -207,8 +240,17 @@ public struct PostureCycle {
         return startCountdown(new)
     }
 
+    private func length(of countdown: Countdown, in settings: CycleSettings) -> Double {
+        switch countdown {
+        case .sit: return settings.sitSeconds
+        case .stand: return settings.standSeconds
+        case .snooze: return settings.snoozeSeconds
+        }
+    }
+
     private mutating func startCountdown(_ posture: Posture) -> [CycleOutput] {
-        remaining = posture == .sitting ? settings.sitSeconds : settings.standSeconds
+        running = posture == .sitting ? .sit : .stand
+        remaining = length(of: running, in: settings)
         awaySeconds = 0
         isAway = false
         return [.note(posture == .sitting ? "sit-countdown-started" : "stand-countdown-started")]

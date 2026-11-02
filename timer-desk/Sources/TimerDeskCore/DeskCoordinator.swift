@@ -1,11 +1,11 @@
 import Foundation
 
 public struct DeskSettings: Sendable {
-    public var standSlot = "M1"
-    public var sitSlot = "M2"
-    /// Warning jog before a move, in mm.
+    public var standMm: Int?
+    public var sitMm: Int?
+    /// Warning jog before a move, in mm; 0 skips it.
     public var nudgeMm = 10
-    /// How long a panel key press can cancel the move after the warning jog.
+    /// How long a panel key press can cancel the move after the warning jog; 0 skips the wait.
     public var windowSeconds = 3.0
     /// Within this of the target height counts as already there.
     public var atHeightMm = 10
@@ -17,12 +17,11 @@ public struct DeskSettings: Sendable {
 
 public struct DeskStatus: Equatable, Sendable {
     public let heightMm: Int
-    /// Panel memory heights by slot name ("M1"); missing or empty slots are absent.
-    public let memoryMm: [String: Int]
+    public let limitsMm: ClosedRange<Int>?
 
-    public init(heightMm: Int, memoryMm: [String: Int]) {
+    public init(heightMm: Int, limitsMm: ClosedRange<Int>? = nil) {
         self.heightMm = heightMm
-        self.memoryMm = memoryMm
+        self.limitsMm = limitsMm
     }
 }
 
@@ -35,6 +34,9 @@ public enum DeskCommand: Equatable, Sendable {
 public enum CoordinatorInput: Equatable, Sendable {
     case raiseRequested
     case lowerRequested
+    /// Straight to the height, without the warning: the user just asked for it.
+    case manualRequested(targetMm: Int)
+    case stopRequested
     case screenLocked
     case status(DeskStatus)
     case gotoFinished(heightMm: Int)
@@ -50,13 +52,16 @@ public enum CoordinatorOutput: Equatable, Sendable {
     case note(String)
     case notifyFailure(String)
     case finished(MoveOutcome)
+    /// A manual move ended; nil when it did not report a final height.
+    case manualFinished(heightMm: Int?)
 }
 
 /// The raise and lower flows: status, warning jog, cancel window, move.
 ///
 /// A move is skipped when the desk is already at the target height. A locked screen aborts whatever
 /// is running. Inputs that do not fit the current phase (such as results of a cancelled command)
-/// are ignored. Every requested move ends in one `.finished`.
+/// are ignored. Every requested raise or lower ends in one `.finished`, every manual move in one
+/// `.manualFinished`.
 public struct DeskCoordinator {
     public enum Purpose: Equatable, Sendable {
         case raise
@@ -74,9 +79,10 @@ public struct DeskCoordinator {
         /// `baselineMm` is where the warning jog stopped; `sampled` is whether the watch reported yet.
         case window(Purpose, targetMm: Int, baselineMm: Int, sampled: Bool)
         case moving(Purpose, targetMm: Int)
+        case manual(targetMm: Int)
     }
 
-    public let settings: DeskSettings
+    public var settings: DeskSettings
     public private(set) var phase = Phase.idle
 
     public init(settings: DeskSettings) {
@@ -87,6 +93,14 @@ public struct DeskCoordinator {
         switch (input, phase) {
         case (.screenLocked, .idle):
             return []
+        case (.screenLocked, .manual), (.stopRequested, .manual):
+            phase = .idle
+            return [.cancelCommand, .note("manual-move-stopped"), .manualFinished(heightMm: nil)]
+        case (.stopRequested, .idle):
+            return []
+        case (.stopRequested, _):
+            phase = .idle
+            return [.cancelCommand, .note("move-stopped"), .finished(.cancelled)]
         case (.screenLocked, _):
             phase = .idle
             return [.cancelCommand, .note("aborted-screen-locked"), .finished(.aborted)]
@@ -97,15 +111,17 @@ public struct DeskCoordinator {
         case (.lowerRequested, .idle):
             phase = .checking(.lower)
             return [.run(.status)]
-        case (.raiseRequested, _), (.lowerRequested, _):
+        case let (.manualRequested(target), .idle):
+            phase = .manual(targetMm: target)
+            return [.run(.goto(mm: target))]
+        case (.raiseRequested, _), (.lowerRequested, _), (.manualRequested, _):
             return [.note("move-skipped-busy")]
 
         case let (.status(status), .checking(purpose)):
             return check(status, for: purpose)
 
         case let (.gotoFinished(height), .warning(purpose, target)):
-            phase = .window(purpose, targetMm: target, baselineMm: height, sampled: false)
-            return [.run(.watch(seconds: settings.windowSeconds))]
+            return waitForCancel(purpose, targetMm: target, heightMm: height)
 
         case let (.watchSample(height), .window(purpose, target, baseline, _)):
             guard abs(height - baseline) > settings.cancelMm else {
@@ -124,11 +140,19 @@ public struct DeskCoordinator {
             phase = .idle
             return [.note(purpose == .raise ? "raised" : "lowered"), .finished(.moved(heightMm: height))]
 
+        case let (.gotoFinished(height), .manual):
+            phase = .idle
+            return [.note("manual-move-done"), .manualFinished(heightMm: height)]
+
+        case let (.commandFailed(message), .manual):
+            phase = .idle
+            return [.note("manual-move-failed"), .notifyFailure("移動失敗：沒有到達目標高度，可能按了面板鍵（\(message)）"),
+                    .manualFinished(heightMm: nil)]
+
         case let (.commandFailed(message), .moving(purpose, _)):
             // On the real desk this is usually a panel press: the desk stops short, keeps reporting
             // its height for about 10 s, then goes quiet and cofo-desk reports stale telemetry.
-            let slot = purpose == .raise ? settings.standSlot : settings.sitSlot
-            return fail(purpose, "沒有到達 \(slot)，可能按了面板鍵（\(message)）")
+            return fail(purpose, "沒有到達目標高度，可能按了面板鍵（\(message)）")
         case let (.commandFailed(message), phase) where phase != .idle:
             return fail(purpose(of: phase), message)
 
@@ -141,26 +165,35 @@ public struct DeskCoordinator {
         let height = status.heightMm
         switch purpose {
         case .raise:
-            guard let stand = status.memoryMm[settings.standSlot] else {
-                return fail(purpose, "\(settings.standSlot) memory height is not set")
-            }
+            guard let stand = settings.standMm else { return fail(purpose, "沒有設定高度") }
             if height >= stand - settings.atHeightMm {
                 phase = .idle
                 return [.note("raise-skipped-already-standing"), .finished(.skipped)]
             }
-            phase = .warning(purpose, targetMm: stand)
-            return [.run(.goto(mm: height + settings.nudgeMm))]
+            return warn(purpose, targetMm: stand, heightMm: height, jogTo: height + settings.nudgeMm)
         case .lower:
-            guard let sit = status.memoryMm[settings.sitSlot] else {
-                return fail(purpose, "\(settings.sitSlot) memory height is not set")
-            }
+            guard let sit = settings.sitMm else { return fail(purpose, "沒有設定高度") }
             if height <= sit + settings.atHeightMm {
                 phase = .idle
                 return [.note("lower-skipped-already-sitting"), .finished(.skipped)]
             }
-            phase = .warning(purpose, targetMm: sit)
-            return [.run(.goto(mm: height - settings.nudgeMm))]
+            return warn(purpose, targetMm: sit, heightMm: height, jogTo: height - settings.nudgeMm)
         }
+    }
+
+    private mutating func warn(_ purpose: Purpose, targetMm: Int, heightMm: Int, jogTo: Int) -> [CoordinatorOutput] {
+        guard settings.nudgeMm > 0 else { return waitForCancel(purpose, targetMm: targetMm, heightMm: heightMm) }
+        phase = .warning(purpose, targetMm: targetMm)
+        return [.run(.goto(mm: jogTo))]
+    }
+
+    private mutating func waitForCancel(_ purpose: Purpose, targetMm: Int, heightMm: Int) -> [CoordinatorOutput] {
+        guard settings.windowSeconds > 0 else {
+            phase = .moving(purpose, targetMm: targetMm)
+            return [.run(.goto(mm: targetMm))]
+        }
+        phase = .window(purpose, targetMm: targetMm, baselineMm: heightMm, sampled: false)
+        return [.run(.watch(seconds: settings.windowSeconds))]
     }
 
     private mutating func fail(_ purpose: Purpose, _ message: String) -> [CoordinatorOutput] {
@@ -172,7 +205,7 @@ public struct DeskCoordinator {
         switch phase {
         case let .checking(purpose), let .warning(purpose, _), let .window(purpose, _, _, _), let .moving(purpose, _):
             return purpose
-        case .idle:
+        case .idle, .manual:
             return .raise
         }
     }

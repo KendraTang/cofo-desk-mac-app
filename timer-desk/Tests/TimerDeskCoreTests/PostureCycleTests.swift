@@ -197,3 +197,52 @@ private func run(_ cycle: inout PostureCycle, from start: Double, to end: Double
     #expect(standing.clockCompleted() == [.note("clock-ignored")])
     #expect(standing.display(now: 0) == .counting(.standing, remaining: 600))
 }
+
+@Test func aLongerLengthKeepsTheTimeAlreadyPassed() {
+    var cycle = connected()
+    _ = run(&cycle, from: 0, to: 1200)
+    var settings = CycleSettings()
+    settings.sitSeconds = 1800
+    cycle.update(settings: settings)
+    #expect(cycle.display(now: 1200) == .counting(.sitting, remaining: 600))
+}
+
+@Test func aLengthShorterThanThePassedTimeMakesTheMoveDue() {
+    var cycle = connected()
+    _ = run(&cycle, from: 0, to: 1200)
+    var settings = CycleSettings()
+    settings.sitSeconds = 900
+    cycle.update(settings: settings)
+    #expect(run(&cycle, from: 1201, to: 1201) == [.raise])
+}
+
+@Test func aSnoozeUsesTheSnoozeLengthWhenSettingsChange() {
+    var cycle = connected()
+    _ = run(&cycle, from: 0, to: 1500)
+    _ = cycle.moveFinished(.cancelled)
+    _ = run(&cycle, from: 1501, to: 1600)
+    var settings = CycleSettings()
+    settings.snoozeSeconds = 900
+    cycle.update(settings: settings)
+    #expect(cycle.display(now: 1600) == .counting(.sitting, remaining: 800))
+}
+
+@Test func newTargetsDecideThePosture() {
+    var cycle = connected(height: 800)
+    #expect(cycle.display(now: 0) == .counting(.standing, remaining: 600))
+    #expect(cycle.setTargets(standMm: 1200, sitMm: 700) == [.note("sit-countdown-started")])
+    #expect(cycle.display(now: 0) == .counting(.sitting, remaining: 1500))
+    _ = cycle.setTargets(standMm: nil, sitMm: 700)
+    #expect(cycle.display(now: 0) == .notConfigured)
+}
+
+@Test func aManualMoveHoldsTheCountdownAndOnlyCrossingTheMidpointRestartsIt() {
+    var cycle = connected()
+    _ = run(&cycle, from: 0, to: 100)
+    cycle.manualMoveStarted()
+    #expect(run(&cycle, from: 101, to: 110) == [])
+    #expect(cycle.manualMoveFinished(heightMm: 640) == [])
+    #expect(cycle.display(now: 110) == .counting(.sitting, remaining: 1400))
+    cycle.manualMoveStarted()
+    #expect(cycle.manualMoveFinished(heightMm: 1280) == [.note("stand-countdown-started")])
+}

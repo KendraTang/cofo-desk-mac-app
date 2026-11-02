@@ -8,7 +8,8 @@ import TimerDeskCore
 @MainActor
 final class DeskSession {
     private let executable: String
-    private let target: [String]
+    /// Nil until a desk is chosen.
+    private var target: [String]?
     private let deliver: (CoordinatorInput) -> Void
     private let connected: (DeskStatus) -> Void
     private let disconnected: () -> Void
@@ -33,7 +34,7 @@ final class DeskSession {
     private var backoff: TimeInterval = 5
     private static let maxBackoff: TimeInterval = 60
 
-    init(executable: String, target: [String], deliver: @escaping (CoordinatorInput) -> Void,
+    init(executable: String, target: [String]?, deliver: @escaping (CoordinatorInput) -> Void,
          connected: @escaping (DeskStatus) -> Void, disconnected: @escaping () -> Void,
          heightChanged: @escaping (Int) -> Void) {
         self.executable = executable
@@ -48,7 +49,15 @@ final class DeskSession {
 
     /// Restarts a stopped session when its backoff has passed.
     func tick(now: TimeInterval) {
-        if process == nil && now >= restartAt && !isSuspended { start() }
+        if process == nil && now >= restartAt && !isSuspended && target != nil { start() }
+    }
+
+    /// Another desk was chosen. EOF ends the current session and the next one uses the new target.
+    func setTarget(_ new: [String]?) {
+        target = new
+        restartAt = 0
+        try? input?.close()
+        input = nil
     }
 
     /// Drops the connection for a while so another app can use the desk. EOF ends the session.
@@ -67,7 +76,7 @@ final class DeskSession {
 
     /// Starts the session now if it is not running, skipping any backoff.
     func ensureConnected() {
-        if process == nil && !isSuspended {
+        if process == nil && !isSuspended && target != nil {
             emit(["event": "desk-session-ensure"])
             start()
         }
@@ -92,6 +101,7 @@ final class DeskSession {
     }
 
     private func start() {
+        guard let target else { return }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = ["--json"] + target + ["session"]
@@ -244,11 +254,11 @@ final class DeskSession {
 
     private static func deskStatus(_ result: [String: Any]) -> DeskStatus? {
         guard let height = result["height_mm"] as? Double else { return nil }
-        var memory: [String: Int] = [:]
-        for (slot, value) in result["memory_mm"] as? [String: Any] ?? [:] {
-            if let mm = value as? Double { memory[slot] = Int(mm.rounded()) }
+        var limits: ClosedRange<Int>?
+        if let pair = result["limits_mm"] as? [Double], pair.count == 2, pair[0] <= pair[1] {
+            limits = Int(pair[0].rounded())...Int(pair[1].rounded())
         }
-        return DeskStatus(heightMm: Int(height.rounded()), memoryMm: memory)
+        return DeskStatus(heightMm: Int(height.rounded()), limitsMm: limits)
     }
 
     private static func input(for command: DeskCommand, result: [String: Any]) -> CoordinatorInput {
@@ -264,6 +274,100 @@ final class DeskSession {
         case .watch:
             return .watchFinished
         }
+    }
+}
+
+struct ScannedDesk: Identifiable, Equatable {
+    let address: String
+    let name: String?
+    let rssi: Int
+    /// It advertises a service of a known desk. Not every desk has to, so the others are still listed.
+    let knownService: Bool
+
+    var id: String { address }
+}
+
+/// One `cofo-desk scan`. Reports nil if it failed; unnamed devices of no known kind are left out.
+@MainActor
+final class DeskScanner {
+    private let executable: String
+    private let simulated: Bool
+    private var done: (([ScannedDesk]?) -> Void)?
+    private var process: Process?
+    private var output = Data()
+    private var outputEnded = false
+    private var exitStatus: Int32?
+
+    init(executable: String, simulated: Bool, done: @escaping ([ScannedDesk]?) -> Void) {
+        self.executable = executable
+        self.simulated = simulated
+        self.done = done
+    }
+
+    func start() {
+        guard done != nil else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = ["--json"] + (simulated ? ["--simulate"] : []) + ["scan", "--seconds", "5"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.standardError
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { handle.readabilityHandler = nil }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.received(data) } }
+        }
+        process.terminationHandler = { process in
+            let status = process.terminationStatus
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self.exitStatus = status
+                    self.finishIfDone()
+                }
+            }
+        }
+        do {
+            try process.run()
+            self.process = process
+        } catch {
+            emit(["event": "scan-failed-to-start", "error": error.localizedDescription])
+            finish(nil)
+        }
+    }
+
+    func cancel() {
+        done = nil
+        process?.terminate()
+    }
+
+    private func received(_ data: Data) {
+        output += data
+        if data.isEmpty { outputEnded = true }
+        finishIfDone()
+    }
+
+    private func finishIfDone() {
+        guard outputEnded, let exitStatus else { return }
+        guard exitStatus == 0, let object = try? JSONSerialization.jsonObject(with: output) as? [String: Any],
+              let devices = object["devices"] as? [[String: Any]] else {
+            emit(["event": "scan-failed", "status": Int(exitStatus)])
+            finish(nil)
+            return
+        }
+        let desks = devices.compactMap { device -> ScannedDesk? in
+            guard let address = device["address"] as? String else { return nil }
+            return ScannedDesk(address: address, name: device["name"] as? String, rssi: device["rssi"] as? Int ?? 0,
+                               knownService: device["supported_service_advertised"] as? Bool ?? false)
+        }
+        finish(desks.filter { $0.name != nil || $0.knownService }.sorted {
+            ($0.knownService ? 1 : 0, $0.rssi) > ($1.knownService ? 1 : 0, $1.rssi)
+        })
+    }
+
+    private func finish(_ desks: [ScannedDesk]?) {
+        let done = self.done
+        self.done = nil
+        done?(desks)
     }
 }
 

@@ -1,51 +1,51 @@
 // Raises and lowers the desk through cofo-desk on a sit and stand countdown that runs while the user
-// is at the Mac, and shows the countdown in the menu bar (see docs/posture-cycle.md). With --clock, a
-// finished Clock timer also ends the sit countdown; it is read from Control Center's timer menu extra.
-// Without --device or --simulate-state it only logs Clock timers. Logs are JSON lines on stdout.
+// is at the Mac, and shows the countdown in the menu bar (see docs/posture-cycle.md). A finished Clock
+// timer can also end the sit countdown; it is read from Control Center's timer menu extra. Settings
+// come from the settings window; arguments only override them for development and testing, unsaved.
+// Logs are JSON lines on stdout, which the .app points at ~/Library/Logs/timer-desk.log.
 import AppKit
 import ApplicationServices
 import IOKit.pwr_mgt
+import ServiceManagement
 import TimerDeskCore
 
 struct Options {
-    var lengths: [Int] = []
     var tolerance = 3
     var interval = 0.5
+    /// The repo this .app was built from (see build.sh); nil for a bare binary.
+    var repo = Bundle.main.object(forInfoDictionaryKey: "TimerDeskRepo") as? String
     var cofoDesk: String?
-    var target: [String]?
-    var desk = DeskSettings()
-    var cycle = CycleSettings()
-    var clock = false
+    var simulateState: String?
     var traceDesk = false
-
-    /// Log-only mode has nothing else to do.
-    var watchesClock: Bool { clock || target == nil }
+    var overrides: [(inout AppSettings) -> Void] = []
 
     static let usage = """
-        usage: timer-desk [--cofo-desk PATH (--device UUID | --simulate-state FILE)]
-                          [--stand SLOT] [--sit SLOT] [--nudge MM] [--window SECONDS]
+        usage: timer-desk [--cofo-desk PATH] [--device UUID | --simulate-state FILE]
+                          [--stand-mm MM] [--sit-mm MM] [--nudge | --no-nudge] [--window SECONDS]
                           [--sit-after SECONDS] [--stand-after SECONDS] [--snooze SECONDS]
                           [--idle-pause SECONDS] [--away-reset SECONDS] [--video-limit SECONDS]
                           [--clock] [--length SECONDS]... [--tolerance SECONDS]
                           [--interval SECONDS] [--trace-desk]
-          --clock           a finished Clock timer also ends the sit countdown (needs Accessibility);
-                            the menu switch overrides this once used
-          --length          with --clock, only this timer length counts; repeatable (default: any length)
+        Everything except these is in the settings window. These are for development and testing:
+        they override the saved settings for this run and are not saved.
+          --cofo-desk       cofo-desk executable (default: .venv/bin/cofo-desk in the repo the .app was built from)
+          --device          the desk's address from `cofo-desk scan`
+          --simulate-state  use the simulated desk with this state file
+          --stand-mm, --sit-mm  heights to raise and lower to
+          --no-nudge        no warning jog before a move
+          --window          cancel window (0, or 3-60)
+          --sit-after       sit this long before raising (10-7200)
+          --stand-after     stand this long before lowering (10-7200)
+          --snooze          try again after a cancelled or failed move (10-7200)
+          --idle-pause      no input for this long pauses the countdown (10-7200)
+          --away-reset      this much time away restarts the countdown (10-86400)
+          --video-limit     a playing video counts as input for at most this long (0-86400)
+          --clock           a finished Clock timer also ends the sit countdown (needs Accessibility)
+          --length          only this timer length counts; repeatable (default: any length)
           --tolerance       allowed difference from a --length (default 3)
           --interval        poll interval (default 0.5, 0.2-2)
-          --cofo-desk       cofo-desk executable; with --device or --simulate-state the desk moves
-          --stand, --sit    panel memory slots (default M1, M2)
-          --nudge           warning jog in mm (default 10, 5-50)
-          --window          cancel window after the jog (default 3, 3-60)
-          --sit-after       sit this long before raising (default 1500, 10-7200)
-          --stand-after     stand this long before lowering (default 600, 10-7200)
-          --snooze          try again after a cancelled or failed move (default 600, 10-7200)
-          --idle-pause      no input for this long pauses the countdown (default 300, 10-7200)
-          --away-reset      this much time away restarts the countdown (default 900, 10-86400)
-          --video-limit     a playing video counts as input for at most this long (default 1800, 0-86400)
           --trace-desk      log every raw GATT write and notification (cofo-desk --trace)
-        With a desk, the agent stays connected through `cofo-desk session`. For testing, SIGUSR1
-        makes the running countdown due now.
+        For testing, SIGUSR1 makes the running countdown due now.
         """
 
     static func parse(_ arguments: [String]) -> Options? {
@@ -55,19 +55,27 @@ struct Options {
             Double(text).flatMap { range.contains($0) ? $0 : nil }
         }
         while let flag = rest.popFirst() {
-            if flag == "--trace-desk" {
+            switch flag {
+            case "--trace-desk":
                 options.traceDesk = true
                 continue
-            }
-            if flag == "--clock" {
-                options.clock = true
+            case "--clock":
+                options.overrides.append { $0.clock = true }
                 continue
+            case "--nudge":
+                options.overrides.append { $0.nudge = true }
+                continue
+            case "--no-nudge":
+                options.overrides.append { $0.nudge = false }
+                continue
+            default:
+                break
             }
             guard flag != "--help", let text = rest.popFirst() else { return nil }
             switch flag {
             case "--length":
                 guard let value = Int(text), value > 0 else { return nil }
-                options.lengths.append(value)
+                options.overrides.append { $0.clockLengths.append(value) }
             case "--tolerance":
                 guard let value = Int(text), value >= 0 else { return nil }
                 options.tolerance = value
@@ -77,44 +85,43 @@ struct Options {
             case "--cofo-desk":
                 options.cofoDesk = text
             case "--device":
-                guard options.target == nil else { return nil }
-                options.target = ["--device", text]
+                guard options.simulateState == nil else { return nil }
+                options.overrides.append { $0.deviceID = text }
             case "--simulate-state":
-                guard options.target == nil else { return nil }
-                options.target = ["--simulate", "--state-file", text]
-            case "--stand", "--sit":
-                guard text.range(of: "^M[1-4]$", options: .regularExpression) != nil else { return nil }
-                if flag == "--stand" { options.desk.standSlot = text } else { options.desk.sitSlot = text }
-            case "--nudge":
-                guard let value = Int(text), (5...50).contains(value) else { return nil }
-                options.desk.nudgeMm = value
+                options.simulateState = text
+            case "--stand-mm":
+                guard let value = Int(text) else { return nil }
+                options.overrides.append { $0.slots[$0.raiseSlot].heightMm = value }
+            case "--sit-mm":
+                guard let value = Int(text) else { return nil }
+                options.overrides.append { $0.slots[$0.lowerSlot].heightMm = value }
             case "--window":
-                guard let value = number(text, 3...60) else { return nil }
-                options.desk.windowSeconds = value
+                guard let value = number(text, 0...60), value == 0 || value >= 3 else { return nil }
+                options.overrides.append { $0.windowSeconds = value }
             case "--sit-after":
                 guard let value = number(text, 10...7200) else { return nil }
-                options.cycle.sitSeconds = value
+                options.overrides.append { $0.sitSeconds = value }
             case "--stand-after":
                 guard let value = number(text, 10...7200) else { return nil }
-                options.cycle.standSeconds = value
+                options.overrides.append { $0.standSeconds = value }
             case "--snooze":
                 guard let value = number(text, 10...7200) else { return nil }
-                options.cycle.snoozeSeconds = value
+                options.overrides.append { $0.snoozeSeconds = value }
             case "--idle-pause":
                 guard let value = number(text, 10...7200) else { return nil }
-                options.cycle.idlePauseSeconds = value
+                options.overrides.append { $0.idlePauseSeconds = value }
             case "--away-reset":
                 guard let value = number(text, 10...86400) else { return nil }
-                options.cycle.awayResetSeconds = value
+                options.overrides.append { $0.awayResetSeconds = value }
             case "--video-limit":
                 guard let value = number(text, 0...86400) else { return nil }
-                options.cycle.videoLimitSeconds = value
+                options.overrides.append { $0.videoLimitSeconds = value }
             default:
                 return nil
             }
         }
-        guard (options.cofoDesk == nil) == (options.target == nil), options.desk.standSlot != options.desk.sitSlot
-        else { return nil }
+        if options.cofoDesk == nil { options.cofoDesk = options.repo.map { "\($0)/.venv/bin/cofo-desk" } }
+        guard options.cofoDesk != nil else { return nil }
         return options
     }
 }
@@ -191,9 +198,6 @@ func screenIsLocked() -> Bool {
     return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
 }
 
-/// The menu's Clock switch, kept across restarts; --clock only sets the starting value.
-let clockDefaultsKey = "watchClock"
-
 func readPresence() -> Presence {
     // ~0 is kCGAnyInputEventType, which Swift does not import.
     let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
@@ -218,7 +222,7 @@ func monotonicNow() -> TimeInterval {
     TimeInterval(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1e9
 }
 
-func menuBarTitle(_ display: CycleDisplay) -> String {
+func menuBarTitle(_ display: CycleDisplay, showCountdown: Bool) -> String {
     func clock(_ seconds: Double) -> String {
         let total = Int(seconds.rounded(.up))
         return String(format: "%d:%02d", total / 60, total % 60)
@@ -226,10 +230,10 @@ func menuBarTitle(_ display: CycleDisplay) -> String {
     func arrow(_ posture: Posture) -> String { posture == .sitting ? "↑" : "↓" }
     switch display {
     case .disconnected: return "桌子未連線"
-    case .notConfigured: return "未設定 M1／M2"
-    case let .paused(remaining): return "⏸ \(clock(remaining))"
-    case let .counting(posture, remaining): return "\(arrow(posture)) \(clock(remaining))"
-    case let .away(posture, remaining): return "⏸ \(arrow(posture)) \(clock(remaining))"
+    case .notConfigured: return "未設定高度"
+    case let .paused(remaining): return showCountdown ? "⏸ \(clock(remaining))" : "⏸"
+    case let .counting(posture, remaining): return showCountdown ? "\(arrow(posture)) \(clock(remaining))" : arrow(posture)
+    case let .away(posture, remaining): return showCountdown ? "⏸ \(arrow(posture)) \(clock(remaining))" : "⏸ \(arrow(posture))"
     case let .waitingForUser(posture): return "\(arrow(posture)) 等你回來"
     case let .moving(posture): return "\(arrow(posture)) 移動中"
     }
@@ -238,78 +242,141 @@ func menuBarTitle(_ display: CycleDisplay) -> String {
 @MainActor
 final class Agent: NSObject {
     private static let suspendSeconds: TimeInterval = 600
+    /// A connected desk does not advertise, so a scan waits for the link to drop.
+    private static let scanDelaySeconds = 1.5
 
-    private let policy: TriggerPolicy
+    private let options: Options
+    private let model: SettingsModel
+    private let window: SettingsWindow
+    private var settings: AppSettings
+    private var policy: TriggerPolicy
     /// Nil when Clock timers are not watched.
     private var reader: MenuExtraReader?
     private var tracker = TimerTracker()
     private var lastFailure: MenuExtraReader.Failure?
     private var locked = screenIsLocked()
     private var videoPlaying = false
-    private let standSlot: String
-    private let sitSlot: String
-    /// Nil in log-only mode, like the session and the status item.
-    private var coordinator: DeskCoordinator?
-    private var cycle: PostureCycle?
-    private var session: DeskSession?
-    private var statusItem: NSStatusItem?
+    private var coordinator: DeskCoordinator
+    private var cycle: PostureCycle
+    private var session: DeskSession!
+    private var scanner: DeskScanner?
+    private var statusItem: NSStatusItem!
     private var pauseItem: NSMenuItem?
     private var suspendItem: NSMenuItem?
     private var clockItem: NSMenuItem?
     private var updateItem: NSMenuItem?
+    private var slotItems: [NSMenuItem] = []
+    private var stopItem: NSMenuItem?
     private var updating: Process?
-    /// Set when a rebuild succeeded: the agent exits once no move is running, and launchd starts
-    /// the new binary (KeepAlive).
+    /// Set when a rebuild succeeded: the agent relaunches itself once no move is running.
     private var restartPending = false
     /// Length of the timer now counting down, from its start event.
     private var countingLength: Int?
     /// Seconds left at which the desk connection is checked before a matching timer ends.
     private static let connectionCheckSeconds = 15
 
-    init(options: Options) {
-        policy = TriggerPolicy(lengths: options.lengths, tolerance: options.tolerance)
-        reader = options.watchesClock ? MenuExtraReader() : nil
-        standSlot = options.desk.standSlot
-        sitSlot = options.desk.sitSlot
+    init(options: Options, model: SettingsModel) {
+        self.options = options
+        self.model = model
+        window = SettingsWindow(model: model)
+        settings = model.effective
+        policy = TriggerPolicy(lengths: settings.clockLengths, tolerance: options.tolerance)
+        reader = settings.clock ? MenuExtraReader() : nil
+        coordinator = DeskCoordinator(settings: settings.deskSettings)
+        cycle = PostureCycle(settings: settings.cycleSettings)
         super.init()
-        if let executable = options.cofoDesk, let target = options.target {
-            coordinator = DeskCoordinator(settings: options.desk)
-            cycle = PostureCycle(settings: options.cycle)
-            session = DeskSession(
-                executable: executable, target: target + (options.traceDesk ? ["--trace"] : []),
-                deliver: { [unowned self] input in self.apply(input) },
-                connected: { [unowned self] status in
-                    self.applyCycle { $0.deskConnected(heightMm: status.heightMm, standMm: status.memoryMm[self.standSlot],
-                                                       sitMm: status.memoryMm[self.sitSlot]) }
-                },
-                disconnected: { [unowned self] in self.applyCycle { $0.deskDisconnected(); return [] } },
-                heightChanged: { [unowned self] mm in self.applyCycle { $0.heightChanged(mm: mm) } })
-            setUpStatusItem()
+        session = DeskSession(
+            executable: options.cofoDesk!, target: target(for: settings),
+            deliver: { [unowned self] input in self.apply(input) },
+            connected: { [unowned self] status in
+                self.model.deskConnected(heightMm: status.heightMm, limitsMm: status.limitsMm)
+                self.applyCycle { $0.deskConnected(heightMm: status.heightMm, standMm: self.settings.raiseMm,
+                                                   sitMm: self.settings.lowerMm) }
+            },
+            disconnected: { [unowned self] in
+                self.model.deskDisconnected()
+                self.applyCycle { $0.deskDisconnected(); return [] }
+            },
+            heightChanged: { [unowned self] mm in
+                self.model.heightMm = mm
+                self.applyCycle { $0.heightChanged(mm: mm) }
+            })
+        model.agent = self
+        setUpStatusItem()
+        if settings.deviceID == nil && options.simulateState == nil { window.show(tab: .desk) }
+    }
+
+    private func target(for settings: AppSettings) -> [String]? {
+        var target: [String]
+        if let state = options.simulateState {
+            target = ["--simulate", "--state-file", state]
+        } else if let device = settings.deviceID {
+            target = ["--device", device]
+        } else {
+            return nil
         }
+        if options.traceDesk { target.append("--trace") }
+        return target
     }
 
     private func setUpStatusItem() {
         NSApplication.shared.setActivationPolicy(.accessory)
+        // Text fields only get cut, copy and paste from a main menu.
+        NSApplication.shared.mainMenu = editingMenu()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let menu = NSMenu()
         menu.autoenablesItems = false
-        func add(_ title: String, _ action: Selector) -> NSMenuItem {
-            let entry = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        func add(_ title: String, _ action: Selector, key: String = "") -> NSMenuItem {
+            let entry = NSMenuItem(title: title, action: action, keyEquivalent: key)
             entry.target = self
             menu.addItem(entry)
             return entry
         }
+        for index in settings.slots.indices {
+            let entry = add("", #selector(moveToSlot))
+            entry.tag = index
+            slotItems.append(entry)
+        }
+        stopItem = add("停止", #selector(stopMove))
+        menu.addItem(.separator())
         _ = add("重新開始倒數", #selector(restartCountdown))
         pauseItem = add("暫停 1 小時", #selector(togglePause))
         suspendItem = add("暫時中斷連線 10 分鐘", #selector(toggleSuspend))
         menu.addItem(.separator())
         clockItem = add("對齊 Mac 時鐘的倒數計時", #selector(toggleClock))
-        clockItem?.state = reader == nil ? .off : .on
         menu.addItem(.separator())
+        _ = add("設定⋯", #selector(openSettings), key: ",")
         updateItem = add("從原始碼更新並重新啟動", #selector(update))
+        updateItem?.isHidden = options.repo == nil
+        _ = add("結束", #selector(quit), key: "q")
         item.menu = menu
-        item.button?.title = menuBarTitle(.disconnected)
+        item.button?.title = menuBarTitle(.disconnected, showCountdown: true)
         statusItem = item
+    }
+
+    private func editingMenu() -> NSMenu {
+        let edit = NSMenu(title: "編輯")
+        edit.addItem(withTitle: "剪下", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "拷貝", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "貼上", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "全選", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: "關閉視窗", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let entry = NSMenuItem()
+        entry.submenu = edit
+        let menu = NSMenu()
+        menu.addItem(entry)
+        return menu
+    }
+
+    @objc private func moveToSlot(_ sender: NSMenuItem) {
+        guard coordinator.phase == .idle, let target = settings.slots[sender.tag].heightMm else { return }
+        emit(["event": "manual-move", "slot": sender.tag, "target_mm": target])
+        cycle.manualMoveStarted()
+        apply(.manualRequested(targetMm: target))
+    }
+
+    @objc private func stopMove() {
+        apply(.stopRequested)
     }
 
     @objc private func restartCountdown() {
@@ -317,7 +384,7 @@ final class Agent: NSObject {
     }
 
     @objc private func togglePause() {
-        if cycle?.isPaused == true {
+        if cycle.isPaused {
             applyCycle { $0.restart() }
         } else {
             let now = monotonicNow()
@@ -326,7 +393,6 @@ final class Agent: NSObject {
     }
 
     @objc private func toggleSuspend() {
-        guard let session else { return }
         if session.isSuspended {
             session.resume()
         } else {
@@ -335,23 +401,71 @@ final class Agent: NSObject {
     }
 
     @objc private func toggleClock() {
-        let on = reader == nil
+        model.edit { $0.clock.toggle() }
+    }
+
+    @objc private func openSettings() {
+        window.show()
+    }
+
+    @objc private func quit() {
+        NSApplication.shared.terminate(nil)
+    }
+
+    /// The settings window saved a change: everything takes effect now.
+    func settingsChanged() {
+        let new = model.effective
+        emit(["event": "settings-changed"])
+        cycle.update(settings: new.cycleSettings)
+        coordinator.settings = new.deskSettings
+        policy = TriggerPolicy(lengths: new.clockLengths, tolerance: options.tolerance)
+        if new.clock != settings.clock { setClockWatch(new.clock) }
+        let targetChanged = new.deviceID != settings.deviceID
+        settings = new
+        applyCycle { $0.setTargets(standMm: new.raiseMm, sitMm: new.lowerMm) }
+        if targetChanged { session.setTarget(target(for: new)) }
+    }
+
+    private func setClockWatch(_ on: Bool) {
         reader = on ? MenuExtraReader() : nil
         tracker = TimerTracker()
         lastFailure = nil
         countingLength = nil
-        UserDefaults.standard.set(on, forKey: clockDefaultsKey)
-        clockItem?.state = on ? .on : .off
         // Asks for Accessibility the first time; the value of kAXTrustedCheckOptionPrompt.
         let trusted = on ? AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) : false
         emit(["event": on ? "clock-watch-on" : "clock-watch-off", "accessibility": on ? trusted : NSNull()])
     }
 
-    /// Rebuilds from the repo this binary was built in (timer-desk/build.sh next to bin/).
+    /// Drops the desk connection and looks for desks; the session stays down until the scan ends.
+    func startScan() {
+        guard coordinator.phase == .idle, scanner == nil else { return }
+        session.suspend(seconds: Self.suspendSeconds)
+        model.scanStarted()
+        let scanner = DeskScanner(executable: options.cofoDesk!, simulated: options.simulateState != nil) { [unowned self] found in
+            self.scanner = nil
+            self.model.scanFinished(found)
+        }
+        self.scanner = scanner
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.scanDelaySeconds) {
+            MainActor.assumeIsolated { scanner.start() }
+        }
+    }
+
+    /// Ends the scan: `desk` is the chosen one, nil goes back to the current one.
+    func endScan(choosing desk: ScannedDesk?) {
+        scanner?.cancel()
+        scanner = nil
+        model.scanEnded()
+        if let desk {
+            model.edit { $0.choose(deviceID: desk.address, name: desk.name) }
+        }
+        session.resume()
+    }
+
+    /// Rebuilds from the repo this .app was built in.
     @objc private func update() {
-        guard updating == nil, !restartPending, let executable = Bundle.main.executableURL else { return }
-        let script = executable.resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("build.sh")
+        guard updating == nil, !restartPending, let repo = options.repo else { return }
+        let script = URL(fileURLWithPath: repo).appendingPathComponent("timer-desk/build.sh")
         let process = Process()
         process.executableURL = script
         process.standardOutput = FileHandle.standardOutput
@@ -386,33 +500,42 @@ final class Agent: NSObject {
         updateItem?.title = "等桌子停下後重新啟動⋯⋯"
     }
 
+    /// Opens the new build once this process has gone: a running app would only be brought forward.
+    private func relaunch() -> Never {
+        emit(["event": "restarting-for-update"])
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open \"$2\"",
+                             "sh", "\(getpid())", Bundle.main.bundlePath]
+        try? process.run()
+        exit(0)
+    }
+
     /// Requests a due move now (SIGUSR1, for testing).
     func expireCountdown() {
-        cycle?.expire()
+        cycle.expire()
     }
 
     func apply(_ input: CoordinatorInput) {
-        guard var coordinator else { return }
         let outputs = coordinator.handle(input)
-        self.coordinator = coordinator
         for output in outputs {
             switch output {
-            case let .run(command): session?.run(command)
-            case .cancelCommand: session?.cancel()
+            case let .run(command): session.run(command)
+            case .cancelCommand: session.cancel()
             case let .note(name): emit(["event": name])
             case let .notifyFailure(message):
                 emit(["event": "failure-notified", "message": message])
                 notifyFailure(message)
             case let .finished(outcome):
                 applyCycle { $0.moveFinished(outcome) }
+            case let .manualFinished(height):
+                applyCycle { $0.manualMoveFinished(heightMm: height) }
             }
         }
     }
 
     private func applyCycle(_ change: (inout PostureCycle) -> [CycleOutput]) {
-        guard var cycle else { return }
         let outputs = change(&cycle)
-        self.cycle = cycle
         for output in outputs {
             switch output {
             case .raise: apply(.raiseRequested)
@@ -436,22 +559,39 @@ final class Agent: NSObject {
             if videoPlaying { fields["holders"] = displaySleepHolders() }
             emit(fields)
         }
-        if restartPending && coordinator?.phase ?? .idle == .idle {
-            emit(["event": "restarting-for-update"])
-            exit(0)
-        }
-        session?.tick(now: ProcessInfo.processInfo.systemUptime)
+        if restartPending && coordinator.phase == .idle { relaunch() }
+        session.tick(now: ProcessInfo.processInfo.systemUptime)
         applyCycle { $0.tick(now: now, presence: presence) }
         watchClock()
         updateStatusItem(now: now)
     }
 
     private func updateStatusItem(now: TimeInterval) {
-        guard let cycle, let session else { return }
-        let title = session.isSuspended ? "已中斷連線" : menuBarTitle(cycle.display(now: now))
-        if statusItem?.button?.title != title { statusItem?.button?.title = title }
+        let title: String
+        if model.scanning {
+            title = "搜尋桌子中"
+        } else if session.isSuspended {
+            title = "已中斷連線"
+        } else if settings.deviceID == nil && options.simulateState == nil {
+            title = "未選擇桌子"
+        } else {
+            title = menuBarTitle(cycle.display(now: now), showCountdown: settings.countdownInMenuBar)
+        }
+        if statusItem.button?.title != title { statusItem.button?.title = title }
         pauseItem?.title = cycle.isPaused ? "結束暫停" : "暫停 1 小時"
         suspendItem?.title = session.isSuspended ? "立刻重新連線" : "暫時中斷連線 10 分鐘"
+        clockItem?.state = settings.clock ? .on : .off
+        let idle = coordinator.phase == .idle
+        stopItem?.isHidden = idle
+        model.moving = !idle
+        for (entry, slot) in zip(slotItems, settings.slots) {
+            entry.isHidden = slot.heightMm == nil
+            guard let target = slot.heightMm else { continue }
+            let label = "移到：\(slot.name)（\(AppSettings.cm(target)) cm）"
+            if entry.title != label { entry.title = label }
+            let there = model.heightMm.map { abs($0 - target) <= coordinator.settings.atHeightMm } ?? false
+            entry.isEnabled = idle && model.connected && !there
+        }
     }
 
     private func watchClock() {
@@ -468,7 +608,7 @@ final class Agent: NSObject {
         let observation = Observation(time: ProcessInfo.processInfo.systemUptime, remaining: remaining)
         for event in tracker.observe(observation) { log(event) }
         if remaining == Self.connectionCheckSeconds, !locked, policy.matches(countingLength) {
-            session?.ensureConnected()
+            session.ensureConnected()
         }
     }
 
@@ -493,7 +633,7 @@ final class Agent: NSObject {
             var fields: [String: Any] = ["event": "completed", "length": length ?? NSNull()]
             switch policy.decide(completedLength: length, screenLocked: locked) {
             case .raise:
-                fields["decision"] = coordinator == nil ? "would-raise" : "raise"
+                fields["decision"] = "raise"
                 emit(fields)
                 applyCycle { $0.clockCompleted() }
                 return
@@ -510,26 +650,39 @@ final class Agent: NSObject {
     }
 }
 
-guard var options = Options.parse(Array(CommandLine.arguments.dropFirst())) else {
+if CommandLine.arguments.dropFirst().first == "--unregister-login-item" {
+    try? SMAppService.mainApp.unregister()
+    exit(0)
+}
+guard let options = Options.parse(Array(CommandLine.arguments.dropFirst())) else {
     FileHandle.standardError.write(Data((Options.usage + "\n").utf8))
     exit(2)
 }
-if options.target != nil, let saved = UserDefaults.standard.object(forKey: clockDefaultsKey) as? Bool {
-    options.clock = saved
+// Opened from Finder or at login there is no terminal; cofo-desk inherits these too.
+if Bundle.main.bundlePath.hasSuffix(".app") {
+    let log = NSHomeDirectory() + "/Library/Logs/timer-desk.log"
+    let descriptor = open(log, O_WRONLY | O_APPEND | O_CREAT, 0o644)
+    if descriptor >= 0 {
+        dup2(descriptor, STDOUT_FILENO)
+        dup2(descriptor, STDERR_FILENO)
+        close(descriptor)
+    }
 }
 
+let model = SettingsModel(overrides: options.overrides)
 // The value of kAXTrustedCheckOptionPrompt, which Swift 6 rejects as shared mutable state.
 let prompt = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
 emit([
-    "event": "agent-started", "pid": Int(getpid()), "clock": options.watchesClock, "lengths": options.lengths,
-    "tolerance": options.tolerance, "interval": options.interval,
-    "sit_after": options.cycle.sitSeconds, "stand_after": options.cycle.standSeconds,
-    "desk": options.target.map { $0.joined(separator: " ") } ?? "log-only",
-    "accessibility": options.watchesClock ? AXIsProcessTrustedWithOptions(prompt) : NSNull(),
+    "event": "agent-started", "pid": Int(getpid()), "clock": model.effective.clock,
+    "lengths": model.effective.clockLengths, "tolerance": options.tolerance, "interval": options.interval,
+    "sit_after": model.effective.sitSeconds, "stand_after": model.effective.standSeconds,
+    "stand_mm": model.effective.raiseMm ?? NSNull(), "sit_mm": model.effective.lowerMm ?? NSNull(),
+    "desk": options.simulateState.map { "simulated: \($0)" } ?? model.effective.deviceID ?? "none",
+    "accessibility": model.effective.clock ? AXIsProcessTrustedWithOptions(prompt) : NSNull(),
     "screen_locked": screenIsLocked(),
 ])
 
-let agent = Agent(options: options)
+let agent = Agent(options: options, model: model)
 let workspace = NSWorkspace.shared.notificationCenter
 for (name, event) in [(NSWorkspace.willSleepNotification, "will-sleep"), (NSWorkspace.didWakeNotification, "did-wake")] {
     workspace.addObserver(forName: name, object: nil, queue: .main) { _ in emit(["event": event]) }

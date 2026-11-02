@@ -37,7 +37,7 @@ python3 -m venv .venv
 .venv/bin/cofo-desk --json --device <桌子 UUID> status
 ```
 
-`status` 會回報目前高度、上下限和面板記憶高度 `memory_mm`。自動坐站週期用的就是面板上的 M1（站姿）和 M2（坐姿），請先在桌子面板上設好。
+`status` 會回報目前高度、上下限和面板記憶高度 `memory_mm`。
 
 ### 2. 自動坐站週期
 
@@ -45,13 +45,13 @@ python3 -m venv .venv
 
 ```sh
 scripts/create-signing-identity.sh    # 只需一次，過程中會要求登入密碼
-timer-desk/install.sh --cofo-desk "$PWD/.venv/bin/cofo-desk" --device <桌子 UUID> --clock
+timer-desk/install.sh
 ```
 
 - `create-signing-identity.sh` 會在登入鑰匙圈建立本機簽署身分 `cofo-desk-auto local signing`。重新編譯後簽署身分不變，macOS 給的權限就不會失效。
-- `install.sh` 會編譯、簽署，再把程式裝成 LaunchAgent（`dev.cofodesk.timer-desk`），登入後自動啟動，結束了也會自己重啟。
-- 第一次執行時 macOS 會要求藍牙權限。加了 `--clock` 才需要輔助使用權限（用來讀選單列上的計時器）；不想連動 Clock 就拿掉。
-- 裝好後用[查看狀態](#查看狀態)的指令確認它在執行、已連上桌子。
+- `install.sh` 會編譯、簽署出 `timer-desk/bin/TimerDesk.app` 並啟動它，也會移除舊版的 LaunchAgent。這個 `.app` 要用 repo 裡的 `.venv`，只能在建置它的電腦上用。
+- 第一次啟動會開啟設定視窗：按「搜尋桌子」選桌子，再設定高度和自動升降的目標。macOS 會要求藍牙權限；開啟 Clock 連動才需要輔助使用權限。
+- 想要登入後自動啟動，到設定視窗的「一般」打開。程式當掉不會自己重啟。
 
 ### 3. Android App
 
@@ -87,9 +87,9 @@ python3 -m cofo_desk --simulate --state-file /tmp/cofo-demo.json goto 80
 裝好後不用做任何事。只要你在用電腦，選單列就會顯示倒數：`↑ 12:34` 是多久後升，`↓ 03:10` 是多久後降。
 
 1. 坐姿倒數 25 分鐘後，桌子先點動約 1 cm 當預告。
-2. 3 秒內按任何面板鍵就取消，10 分鐘後再試；沒按就升到 M1。
-3. 站姿倒數 10 分鐘後，同樣點動、等 3 秒，再降回 M2。
-4. 自己用面板跨過 M1、M2 的中點，就從頭開始新姿勢的倒數。
+2. 3 秒內按任何面板鍵就取消，10 分鐘後再試；沒按就升到設定的高度。
+3. 站姿倒數 10 分鐘後，同樣點動、等 3 秒，再降回去。
+4. 自己用面板跨過兩個高度的中點，就從頭開始新姿勢的倒數。
 
 在場判斷：
 
@@ -97,17 +97,17 @@ python3 -m cofo_desk --simulate --state-file /tmp/cofo-demo.json goto 80
 - 沒操作 5 分鐘內照常倒數，超過就暫停（`⏸`）；鎖定或睡眠時立刻暫停。同一段倒數累計離開 15 分鐘以上，回來後重算。
 - 倒數歸零時最近 60 秒沒操作，就顯示「等你回來」，下次有操作才動，避免在沒人時移動。
 
-選單列的選單可以重新開始倒數、暫停 1 小時、暫時中斷連線 10 分鐘（給手機原廠 App 用），以及開關「對齊 Mac 時鐘的倒數計時」。桌子連不上時顯示「桌子未連線」，倒數停住，背景持續重連。
+選單列的選單可以立刻移到設定好的高度、重新開始倒數、暫停 1 小時、暫時中斷連線 10 分鐘（給手機原廠 App 用）、開關「對齊 Mac 時鐘的倒數計時」，以及打開設定視窗。桌子連不上時顯示「桌子未連線」，倒數停住，背景持續重連。
 
-開啟「對齊 Mac 時鐘的倒數計時」時，Clock 的任何計時器自然歸零也會觸發升起，和自動倒數誰先歸零誰算。這個開關會記住，重開機後照舊；安裝時的 `--clock` 只決定第一次的預設值。
+開啟「對齊 Mac 時鐘的倒數計時」時，Clock 的任何計時器自然歸零也會觸發升起，和自動倒數誰先歸零誰算。這個開關會記住，重開機後照舊。
 
 完整規則和未驗證的部分見[自動坐站週期](docs/posture-cycle.md)。
 
 #### 查看狀態
 
 ```sh
-launchctl print gui/$(id -u)/dev.cofodesk.timer-desk | grep -m1 'state ='    # running 表示在監控
-grep -v TRACE ~/Library/Logs/timer-desk.log | tail -5                        # 最近的事件
+pgrep -x timer-desk                                  # 有輸出表示在執行
+grep -v TRACE ~/Library/Logs/timer-desk.log | tail -5    # 最近的事件
 ```
 
 紀錄是 JSON Lines，每行一個事件。選單列的顯示就是目前狀態。
@@ -115,16 +115,9 @@ grep -v TRACE ~/Library/Logs/timer-desk.log | tail -5                        # �
 #### 更新、改設定、移除
 
 - **更新程式**：點選單列選單的「從原始碼更新並重新啟動」。它會用 repo 裡目前的程式碼重新編譯、簽署，等桌子沒在移動時重新啟動，倒數從頭開始；失敗會跳通知。它不會從 GitHub 拉新程式碼，要先自己 `git pull`。
-- **改設定**：直接重跑 `install.sh`，不必先移除，它會先停掉舊版。設定都寫在 LaunchAgent 的參數裡，沒有另外的設定檔，例如：
-  - `--sit-after 1800`：坐 30 分鐘才升
-  - `--stand-after 900`：站 15 分鐘才降
-  - `--nudge 15`：點動距離改成 15 mm
-  - `--window 5`：取消等待改成 5 秒
-  - `--length 1500`：Clock 連動只認 25 分鐘的計時器（可重複給多個長度）
-
-  全部參數請執行 `timer-desk/bin/timer-desk --help`。
-- **重裝的時機**：重裝會重新啟動程式，倒數從頭開始。
-- **移除**：`timer-desk/uninstall.sh`，會保留紀錄檔和編譯好的程式。
+- **改設定**：在設定視窗改，立刻生效，不用重裝。
+- **測試時臨時覆蓋**：`timer-desk/install.sh --sit-after 60` 這類參數只對這次執行有效，不會存檔。全部參數請執行 `timer-desk/bin/TimerDesk.app/Contents/MacOS/timer-desk --help`。
+- **移除**：`timer-desk/uninstall.sh`，會停掉程式並取消登入時啟動，保留紀錄檔、設定和編譯好的程式。
 
 ### Android App
 

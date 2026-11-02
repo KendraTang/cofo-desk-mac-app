@@ -1,12 +1,22 @@
 #!/bin/bash
-# Builds a release timer-desk with its Info.plist embedded and signs it with the local identity
-# (scripts/create-signing-identity.sh), so privacy grants survive rebuilds. Output: bin/timer-desk
-# The new binary replaces the old one in a single rename, so a running agent is not disturbed.
+# Builds bin/TimerDesk.app and signs it with the local identity (scripts/create-signing-identity.sh),
+# so privacy grants survive rebuilds. TIMER_DESK_SIGN picks another identity ("-" signs ad hoc).
+# The new app replaces the old one only once it is complete, so a running one is not disturbed.
 set -eu
 DIR="$(cd "$(dirname "$0")" && pwd)"
-swift build -c release --package-path "$DIR" \
-    -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker "$DIR/Info.plist"
-mkdir -p "$DIR/bin"
-cp "$DIR/.build/release/timer-desk" "$DIR/bin/timer-desk.new"
-codesign --force --sign "cofo-desk-auto local signing" --identifier dev.cofodesk.timer-desk "$DIR/bin/timer-desk.new"
-mv -f "$DIR/bin/timer-desk.new" "$DIR/bin/timer-desk"
+REPO="$(cd "$DIR/.." && pwd)"
+swift build -c release --package-path "$DIR"
+NEW="$DIR/bin/new/TimerDesk.app"
+rm -rf "$DIR/bin/new" "$DIR/bin/old"
+mkdir -p "$NEW/Contents/MacOS"
+cp "$DIR/.build/release/timer-desk" "$NEW/Contents/MacOS/timer-desk"
+cp "$DIR/Info.plist" "$NEW/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :TimerDeskRepo string $REPO" "$NEW/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :TimerDeskCommit string $(git -C "$REPO" rev-parse --short HEAD)" "$NEW/Contents/Info.plist"
+codesign --force --sign "${TIMER_DESK_SIGN:-cofo-desk-auto local signing}" --identifier dev.cofodesk.timer-desk "$NEW"
+if [ -e "$DIR/bin/TimerDesk.app" ]; then
+    mkdir -p "$DIR/bin/old"
+    mv "$DIR/bin/TimerDesk.app" "$DIR/bin/old/"
+fi
+mv "$NEW" "$DIR/bin/TimerDesk.app"
+rm -rf "$DIR/bin/new" "$DIR/bin/old"

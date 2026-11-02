@@ -6,7 +6,17 @@
     <string>dev.cofodesk.timer-desk</string>
     <key>CFBundleName</key>
     <string>timer-desk</string>
+    <key>CFBundleExecutable</key>
+    <string>timer-desk</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.2.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Raises and lowers the desk after Clock timers through cofo-desk.</string>
+    <string>Raises and lowers the desk through cofo-desk.</string>
 </dict>
 </plist>
