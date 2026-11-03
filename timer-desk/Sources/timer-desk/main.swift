@@ -289,7 +289,7 @@ final class Agent: NSObject {
             executable: options.cofoDesk!, target: target(for: settings),
             deliver: { [unowned self] input in self.apply(input) },
             connected: { [unowned self] status in
-                self.model.deskConnected(heightMm: status.heightMm, limitsMm: status.limitsMm)
+                self.model.deskConnected(heightMm: status.heightMm, limitsMm: status.limitsMm, memoryMm: status.memoryMm)
                 self.applyCycle { $0.deskConnected(heightMm: status.heightMm, standMm: self.settings.raiseMm,
                                                    sitMm: self.settings.lowerMm) }
             },
@@ -457,6 +457,7 @@ final class Agent: NSObject {
         scanner = nil
         model.scanEnded()
         if let desk {
+            if desk.address != settings.deviceID { model.forgetDesk() }
             model.edit { $0.choose(deviceID: desk.address, name: desk.name) }
         }
         session.resume()
@@ -574,6 +575,8 @@ final class Agent: NSObject {
             title = "已中斷連線"
         } else if settings.deviceID == nil && options.simulateState == nil {
             title = "未選擇桌子"
+        } else if session.isConnecting {
+            title = "連線中"
         } else {
             title = menuBarTitle(cycle.display(now: now), showCountdown: settings.countdownInMenuBar)
         }
@@ -581,6 +584,11 @@ final class Agent: NSObject {
         pauseItem?.title = cycle.isPaused ? "結束暫停" : "暫停 1 小時"
         suspendItem?.title = session.isSuspended ? "立刻重新連線" : "暫時中斷連線 10 分鐘"
         clockItem?.state = settings.clock ? .on : .off
+        if session.isConnecting != (model.connectingSince != nil) {
+            model.connectingSince = session.isConnecting ? Date() : nil
+        }
+        let trusted = settings.clock && AXIsProcessTrusted()
+        if trusted != model.accessibilityGranted { model.accessibilityGranted = trusted }
         let idle = coordinator.phase == .idle
         stopItem?.isHidden = idle
         model.moving = !idle

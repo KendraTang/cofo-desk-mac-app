@@ -45,6 +45,9 @@ final class DeskSession {
         self.heightChanged = heightChanged
     }
 
+    /// Started but not ready yet; the desk takes about 5-10 s.
+    var isConnecting: Bool { process != nil && !ready }
+
     var isSuspended: Bool { ProcessInfo.processInfo.systemUptime < suspendedUntil }
 
     /// Restarts a stopped session when its backoff has passed.
@@ -258,7 +261,11 @@ final class DeskSession {
         if let pair = result["limits_mm"] as? [Double], pair.count == 2, pair[0] <= pair[1] {
             limits = Int(pair[0].rounded())...Int(pair[1].rounded())
         }
-        return DeskStatus(heightMm: Int(height.rounded()), limitsMm: limits)
+        var memory: [String: Int] = [:]
+        for (slot, value) in result["memory_mm"] as? [String: Any] ?? [:] {
+            if let mm = value as? Double, mm > 0 { memory[slot] = Int(mm.rounded()) }
+        }
+        return DeskStatus(heightMm: Int(height.rounded()), limitsMm: limits, memoryMm: memory)
     }
 
     private static func input(for command: DeskCommand, result: [String: Any]) -> CoordinatorInput {

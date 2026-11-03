@@ -18,10 +18,13 @@ public struct DeskSettings: Sendable {
 public struct DeskStatus: Equatable, Sendable {
     public let heightMm: Int
     public let limitsMm: ClosedRange<Int>?
+    /// The panel's own memory heights by slot name ("M1"), only shown for comparison.
+    public let memoryMm: [String: Int]
 
-    public init(heightMm: Int, limitsMm: ClosedRange<Int>? = nil) {
+    public init(heightMm: Int, limitsMm: ClosedRange<Int>? = nil, memoryMm: [String: Int] = [:]) {
         self.heightMm = heightMm
         self.limitsMm = limitsMm
+        self.memoryMm = memoryMm
     }
 }
 

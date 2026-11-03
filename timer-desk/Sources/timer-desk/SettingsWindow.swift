@@ -12,6 +12,10 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var connected = false
     @Published var heightMm: Int?
     @Published private(set) var limitsMm: ClosedRange<Int>?
+    @Published private(set) var panelMemoryMm: [String: Int] = [:]
+    /// When the current connection attempt started; nil when not connecting.
+    @Published var connectingSince: Date?
+    @Published var accessibilityGranted = false
     @Published var moving = false
     @Published var heightError: String?
     @Published private(set) var scanning = false
@@ -79,10 +83,19 @@ final class SettingsModel: ObservableObject {
         }
     }
 
-    func deskConnected(heightMm: Int, limitsMm: ClosedRange<Int>?) {
+    func deskConnected(heightMm: Int, limitsMm: ClosedRange<Int>?, memoryMm: [String: Int]) {
         connected = true
         self.heightMm = heightMm
         self.limitsMm = limitsMm
+        panelMemoryMm = memoryMm
+    }
+
+    /// Another desk was chosen: what was read from the old one no longer applies.
+    func forgetDesk() {
+        heightMm = nil
+        limitsMm = nil
+        panelMemoryMm = [:]
+        heightError = nil
     }
 
     func deskDisconnected() {
@@ -171,6 +184,7 @@ struct CommitField: View {
     let value: String
     var width: CGFloat = 64
     var alignment = TextAlignment.trailing
+    var placeholder = ""
     let commit: (String) -> String?
     @State private var text = ""
     @State private var problem: String?
@@ -178,7 +192,9 @@ struct CommitField: View {
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            TextField("", text: $text)
+            // Bordered: in a grouped form a plain field does not look editable, least of all when empty.
+            TextField("", text: $text, prompt: Text(placeholder))
+                .textFieldStyle(.roundedBorder)
                 .labelsHidden()
                 .multilineTextAlignment(alignment)
                 .frame(width: width)
@@ -244,6 +260,17 @@ struct GeneralTab: View {
                 Toggle("對齊 Mac 時鐘的倒數計時", isOn: Binding(
                     get: { model.settings.clock },
                     set: { on in model.edit { $0.clock = on } }))
+                if model.settings.clock && !model.accessibilityGranted {
+                    HStack {
+                        Text("需要「輔助使用」權限才能讀到 Clock 的計時器，現在還沒有。")
+                            .font(.caption).foregroundStyle(.orange)
+                        Spacer()
+                        Button("打開系統設定") {
+                            NSWorkspace.shared.open(URL(
+                                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                        }
+                    }
+                }
             }
             Section {
                 Toggle("登入時自動啟動", isOn: Binding(
@@ -295,6 +322,12 @@ struct DeskTab: View {
                 if let error = model.heightError {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
+                if !model.panelMemoryMm.isEmpty {
+                    Text("參考：桌子面板上存的是 " + model.panelMemoryMm.sorted { $0.key < $1.key }
+                        .map { "\($0.key) \(AppSettings.cm($0.value))" }.joined(separator: "、")
+                        + " cm。那是另一組，這裡的設定不會改到面板，面板也不會改到這裡。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -303,9 +336,19 @@ struct DeskTab: View {
     @ViewBuilder private var connection: some View {
         LabeledContent("目前") {
             if let id = model.effective.deviceID {
-                Text("\(model.effective.deviceName ?? id)（\(model.connected ? "已連線" : "未連線")）")
+                Text("\(model.effective.deviceName ?? id)（\(model.connected ? "已連線" : model.connectingSince != nil ? "連線中⋯⋯" : "未連線")）")
             } else {
                 Text("還沒選擇")
+            }
+        }
+        if let since = model.connectingSince {
+            TimelineView(.periodic(from: since, by: 1)) { context in
+                if context.date.timeIntervalSince(since) > 15 {
+                    Text("連線通常要 5–10 秒。超過 15 秒還沒連上，請確認手機上的 COFO App 已關閉，或按一下面板任一鍵叫醒桌子。")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text("連線中，通常要 5–10 秒。").font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
         if let height = model.heightMm, model.connected {
@@ -353,7 +396,7 @@ struct DeskTab: View {
                 return nil
             }
             Spacer()
-            CommitField(value: slot.heightMm.map(AppSettings.cm) ?? "") { text in
+            CommitField(value: slot.heightMm.map(AppSettings.cm) ?? "", placeholder: "未設定") { text in
                 model.setHeight(slot: index, text: text)
                 return nil
             }
@@ -412,7 +455,7 @@ struct AdvancedTab: View {
                     CommitField(
                         value: model.settings.clockLengths.map { String(format: "%g", Double($0) / 60) }
                             .joined(separator: ", "),
-                        width: 120) { text in
+                        width: 120, placeholder: "任何長度") { text in
                         guard let lengths = AppSettings.clockLengths(fromMinutes: text) else {
                             return "要填數字，用逗號分隔"
                         }
