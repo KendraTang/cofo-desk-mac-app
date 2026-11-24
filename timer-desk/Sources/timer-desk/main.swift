@@ -272,6 +272,9 @@ final class Agent: NSObject {
     private var restartPending = false
     /// Length of the timer now counting down, from its start event.
     private var countingLength: Int?
+    /// Heights still to go in a wiggle (timerdesk://wiggle).
+    private var wiggleSteps: [Int] = []
+    private static let wiggleMm = 10
     /// Seconds left at which the desk connection is checked before a matching timer ends.
     private static let connectionCheckSeconds = 15
 
@@ -302,6 +305,10 @@ final class Agent: NSObject {
                 self.applyCycle { $0.heightChanged(mm: mm) }
             })
         model.agent = self
+        // Registered before the app finishes launching, so a URL that launches it is not lost.
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(handleURL(_:withReply:)),
+            forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
         setUpStatusItem()
         if settings.deviceID == nil && options.simulateState == nil { window.show(tab: .desk) }
     }
@@ -369,10 +376,48 @@ final class Agent: NSObject {
     }
 
     @objc private func moveToSlot(_ sender: NSMenuItem) {
-        guard coordinator.phase == .idle, let target = settings.slots[sender.tag].heightMm else { return }
-        emit(["event": "manual-move", "slot": sender.tag, "target_mm": target])
+        _ = move(toSlot: sender.tag, from: "menu")
+    }
+
+    /// A manual move to a saved height, from the menu or a URL; false when it could not start.
+    private func move(toSlot slot: Int, from source: String) -> Bool {
+        guard coordinator.phase == .idle, model.connected, settings.slots.indices.contains(slot),
+              let target = settings.slots[slot].heightMm else { return false }
+        emit(["event": "manual-move", "slot": slot, "target_mm": target, "source": source])
         cycle.manualMoveStarted()
         apply(.manualRequested(targetMm: target))
+        return true
+    }
+
+    /// Up 1 cm and back as manual moves, ending where it started; down first at the top.
+    /// Stop, a lock or a failed step ends it.
+    private func wiggle() -> Bool {
+        guard coordinator.phase == .idle, model.connected, let base = model.heightMm else { return false }
+        let step = model.limitsMm.map { base + Self.wiggleMm > $0.upperBound } == true ? -Self.wiggleMm : Self.wiggleMm
+        wiggleSteps = [base + step, base]
+        emit(["event": "wiggle", "base_mm": base, "step_mm": step])
+        cycle.manualMoveStarted()
+        apply(.manualRequested(targetMm: wiggleSteps.removeFirst()))
+        return true
+    }
+
+    /// timerdesk://stand, timerdesk://sit (the auto raise and lower heights), timerdesk://wiggle and timerdesk://stop,
+    /// so Shortcuts, Raycast or `open` can move the desk. Moves go the same way as the menu's.
+    @objc func handleURL(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
+        guard let text = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: text) else { return }
+        let command = (url.host ?? url.path).lowercased()
+        let started: Bool
+        switch command {
+        case "stand": started = move(toSlot: settings.raiseSlot, from: "url")
+        case "sit": started = move(toSlot: settings.lowerSlot, from: "url")
+        case "wiggle": started = wiggle()
+        case "stop":
+            apply(.stopRequested)
+            started = true
+        default: started = false
+        }
+        if !started { emit(["event": "url-ignored", "url": text]) }
     }
 
     @objc private func stopMove() {
@@ -530,7 +575,12 @@ final class Agent: NSObject {
             case let .finished(outcome):
                 applyCycle { $0.moveFinished(outcome) }
             case let .manualFinished(height):
-                applyCycle { $0.manualMoveFinished(heightMm: height) }
+                if height != nil, !wiggleSteps.isEmpty {
+                    apply(.manualRequested(targetMm: wiggleSteps.removeFirst()))
+                } else {
+                    wiggleSteps = []
+                    applyCycle { $0.manualMoveFinished(heightMm: height) }
+                }
             }
         }
     }
