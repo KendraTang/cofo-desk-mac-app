@@ -20,3 +20,5 @@ if [ -e "$DIR/bin/TimerDesk.app" ]; then
 fi
 mv "$NEW" "$DIR/bin/TimerDesk.app"
 rm -rf "$DIR/bin/new" "$DIR/bin/old"
+# Claims timerdesk:// URLs now rather than once the app has been opened.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$DIR/bin/TimerDesk.app"

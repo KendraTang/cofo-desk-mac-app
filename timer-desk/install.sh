@@ -7,8 +7,6 @@ LABEL=dev.cofodesk.timer-desk
 APP="$DIR/bin/TimerDesk.app"
 
 "$DIR/build.sh"
-# Claims timerdesk:// URLs now rather than once the app has been opened.
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP"
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 rm -f "$HOME/Library/LaunchAgents/$LABEL.plist" "$DIR/bin/timer-desk"
